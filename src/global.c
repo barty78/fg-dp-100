@@ -173,7 +173,7 @@ void initSystem()
  __PWR_CLK_ENABLE();          // Enable the PWR clock
  HAL_PWR_EnableBkUpAccess();  // Enable access to the backup domain
  //__BKPSRAM_CLK_ENABLE();      // Enable backup SRAM Clock
- HAL_PWREx_EnableBkUpReg();   // Enable the Backup SRAM low power Regulator to retain it's content in VBAT mode, (This will wait until the Backup SRAM low power Regulator is ready)
+ //HAL_PWREx_EnableBkUpReg();   // Enable the Backup SRAM low power Regulator to retain it's content in VBAT mode, (This will wait until the Backup SRAM low power Regulator is ready)
 
  if (DEBUG) writeMessage("DEBUG START\r\n");
 
@@ -265,6 +265,7 @@ void initSystem()
 
 void firmwareReset(uint16_t error)
 {
+ HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
  flagFirmwareReset = 1;
  ERROR_STATE = error;
  HAL_NVIC_SystemReset();

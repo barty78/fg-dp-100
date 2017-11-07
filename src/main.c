@@ -50,6 +50,7 @@
 #include "stm32l4xx_hal.h"
 #include "cmsis_os.h"
 #include "comms.h"
+#include "global.h"
 //#include "i2c.h"
 
 /* USER CODE BEGIN Includes */
@@ -72,6 +73,8 @@ RNG_HandleTypeDef hrng;
 
 TIM_HandleTypeDef htim6;
 
+RTC_HandleTypeDef hrtc;
+
 osThreadId defaultTaskHandle;
 
 /* USER CODE BEGIN PV */
@@ -90,6 +93,8 @@ static void MX_RNG_Init(void);
 static void MX_IWDG_Init(void);
 static void MX_CRC_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_RTC_Init(void);
+
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -134,6 +139,7 @@ int main(void)
   //MX_IWDG_Init();
   //MX_CRC_Init();
   //MX_TIM6_Init();
+  MX_RTC_Init();
 
   handleUART1 = &huart1;
   handleLPUART1 = &hlpuart1;
@@ -163,6 +169,8 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   initThreads();
+
+  //initSystem();
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -213,7 +221,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
     /**Initializes the CPU, AHB and APB busses clocks 
@@ -227,27 +235,28 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_LPUART1
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_LPUART1
                               |RCC_PERIPHCLK_I2C2|RCC_PERIPHCLK_RNG
                               |RCC_PERIPHCLK_ADC;
   PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_HSI;
   PeriphClkInit.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_LSE;
+  PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
   PeriphClkInit.I2c2ClockSelection = RCC_I2C2CLKSOURCE_HSI;
   PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
   PeriphClkInit.RngClockSelection = RCC_RNGCLKSOURCE_HSI48;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
     /**Configure the main internal regulator output voltage 
     */
   if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
     /**Configure the Systick interrupt time 
@@ -288,7 +297,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
     /**Configure Regular Channel 
@@ -301,7 +310,7 @@ static void MX_ADC1_Init(void)
   sConfig.Offset = 0;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
 }
@@ -318,7 +327,7 @@ static void MX_CRC_Init(void)
   hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
   if (HAL_CRC_Init(&hcrc) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
 }
@@ -338,21 +347,21 @@ static void MX_I2C2_Init(void)
   hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
   if (HAL_I2C_Init(&hi2c2) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
 
-    /**Configure Analogue filter 
-    */
+  /**Configure Analogue filter
+   */
   if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	  Error_Handler();
   }
 
-    /**Configure Digital filter 
-    */
+  /**Configure Digital filter
+   */
   if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	  Error_Handler();
   }
 
 }
@@ -367,7 +376,7 @@ static void MX_IWDG_Init(void)
   hiwdg.Init.Reload = 4095;
   if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	  Error_Handler();
   }
 
 }
@@ -387,7 +396,7 @@ static void MX_LPUART1_UART_Init(void)
   hlpuart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   if (HAL_RS485Ex_Init(&hlpuart1, UART_DE_POLARITY_HIGH, 0, 0) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	  Error_Handler();
   }
 
 }
@@ -408,7 +417,7 @@ static void MX_USART1_UART_Init(void)
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   if (HAL_UART_Init(&huart1) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
 }
@@ -420,7 +429,29 @@ static void MX_RNG_Init(void)
   hrng.Instance = RNG;
   if (HAL_RNG_Init(&hrng) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
+  }
+
+}
+
+/* RTC init function */
+static void MX_RTC_Init(void)
+{
+
+    /**Initialize RTC Only
+    */
+
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
   }
 
 }
@@ -437,14 +468,14 @@ static void MX_TIM6_Init(void)
   htim6.Init.Period = 0;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+	    Error_Handler();
   }
 
 }
@@ -530,13 +561,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   * @param  None
   * @retval None
   */
-void _Error_Handler(char * file, int line)
+void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  while(1) 
-  {
-  }
+  firmwareReset(SYSTEM_ERROR);
   /* USER CODE END Error_Handler_Debug */ 
 }
 

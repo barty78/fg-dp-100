@@ -32,7 +32,7 @@
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
  UBaseType_t uxSavedInterruptStatus;
-
+ long xHigherPriorityTaskWoken = pdFALSE;
  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
 #ifdef RS485
   if (UartHandle == hlpuart1)
@@ -40,6 +40,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
   if (UartHandle == handleUART1)
 #endif
   {
+	  HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+	  xQueueSendToBackFromISR( RxQueue, (uint8_t*)(&(rxBuffer)), &xHigherPriorityTaskWoken);
    if (++rxMessageHead >= RX_BUFFER_LENGTH) rxMessageHead = 0;
 #ifdef RS485
    HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
@@ -76,6 +78,8 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
   {
    if (++txMessageTail >= TX_BUFFER_LENGTH) txMessageTail = 0;
    flagByteTransmitted = 1;  // Set transmission flag: transfer complete
+	  HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+
   }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
  volatile uint8_t yyy;
@@ -157,11 +161,6 @@ uint8_t initComms()
  return 0;
 }
 
-void comms(void)
-{
-
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -187,6 +186,7 @@ uint8_t writeMessage(char* msg)
    if (txMessageHead >= TX_BUFFER_LENGTH) txMessageHead = 0;
   }
  taskEXIT_CRITICAL();
+ HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
 
  return 0;
 }
@@ -212,5 +212,6 @@ void sendResponse(char* response)
 
  sprintf(msg, "%s%02X\n", response, crc);  // Append CRC to message before writing out to Tx
  sprintf(lastMsg, msg);
+ HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
  writeMessage(msg);
 }

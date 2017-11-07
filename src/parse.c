@@ -116,6 +116,7 @@ uint8_t parseCommand(char* command)
  if (crcOut != crcIn)
  {
   sprintf(response, "<,FE,\"Invalid CRC: %02X, Valid CRC = %02X for Command [%s]\",", crcIn, crcOut, command);
+  HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
   sendResponse(response);
   if (!DEBUG) return 1;  // Invalid CRC (ignored in DEBUG mode)
  }
@@ -125,7 +126,7 @@ uint8_t parseCommand(char* command)
  if (DEBUG) // Debug Command Echo
  {
   sprintf(response, "%s\n", command);  // Add <LF> to the message string
-  writeMessage(response);
+  //writeMessage(response);
  }
 
  uint32_t delay;
@@ -293,16 +294,16 @@ uint8_t parseCommand(char* command)
    switch(command[3])  // Second digit in command packet
    {
     case '1':  // msgVerReadCmd  Syntax: ">,81,[CRC8]<LF>"
-     if (DEBUG) writeMessage("msgVerReadCmd\r\n");
+     //if (DEBUG) writeMessage("msgVerReadCmd\r\n");
      if (command[4] != ',' ) return 1;
      sprintf(response, "<,83,%s-%s.%s,", HARDWARE_ID, FIRMWARE_VERSION, SVN_RELEASE);
-     sendResponse(response);
+     //sendResponse(response);
     break;
     case '2':  // msgUidReadCmd  Syntax: ">,82,[CRC8]<LF>"
-     if (DEBUG) writeMessage("msgUidReadCmd\r\n");
+     //if (DEBUG) writeMessage("msgUidReadCmd\r\n");
      if (command[4] != ',' ) return 1;
      sprintf(response, "<,84,%08X-%08X-%08X,", (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
-     sendResponse(response);
+     //sendResponse(response);
     break;
    }
   break;

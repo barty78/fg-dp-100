@@ -36,8 +36,6 @@
 uint8_t initThreads()
 {
  #if CHECK_THREADS == 1  // Note: Setting the Start and End Tick values to the same value avoids an inadvertant watchdog trigger upon startup, (since this condition is checked in the monitor thread)
-  /*commsStartTick = 0;
-  commsEndTick = 0;*/
   writeMessageStartTick = 0;
   writeMessageEndTick = 0;
   readPacketStartTick = 0;
@@ -53,15 +51,13 @@ uint8_t initThreads()
   retryWaitTick = 0;
  #endif
 
-#ifdef BLINKY
-// osThreadDef(blink, blinkThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
-// blinkTID = osThreadCreate(osThread(blink), NULL);
 
-#else
+ osThreadDef(blink, blinkThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+ blinkTID = osThreadCreate(osThread(blink), NULL);
 
- /*osThreadDef(comms, commsThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
- commsTID = osThreadCreate(osThread(comms), NULL);
-*/
+ osThreadDef(uart, uartThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+ uartTID = osThreadCreate(osThread(uart), NULL);
+
  osThreadDef(writeMessage, writeMessageThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
  writeMessageTID = osThreadCreate(osThread(writeMessage), NULL);
 
@@ -77,28 +73,44 @@ uint8_t initThreads()
  osThreadDef(writeIO, writeIOThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*2);
  writeIOTID = osThreadCreate(osThread(writeIO), NULL);*/
 
- osThreadDef(timer, monitorThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
- monitorTID = osThreadCreate(osThread(timer), NULL);
+ //osThreadDef(monitor, monitorThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
+ //monitorTID = osThreadCreate(osThread(monitor), NULL);
 
-#endif
+
 
  return 0;
 }
-//-----------------------------------------------------------------------------
 
-#ifdef BLINKY
-void blinkThread(void const *argument)
+void uartThread(void const *argument)
 {
- while(1)
- {
-  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-  osDelay(500);
- }
+	portTickType xLastWakeTime;
+	const portTickType xFrequency = 50;
+	char ch;
 
- osThreadTerminate(NULL);
+	RxQueue = xQueueCreate(128, sizeof(portCHAR));
+	TxQueue = xQueueCreate(128, sizeof(portCHAR));
+	for ( ;; )
+	{
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+
+	osThreadTerminate(NULL);
 }
 
-#endif
+
+//-----------------------------------------------------------------------------
+
+void blinkThread(void const *argument)
+{
+	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
+	for( ;; )
+	{
+		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+		vTaskDelay(xDelay);
+	}
+
+	osThreadTerminate(NULL);
+}
 
 /*///////////////////////////////////////////////////////////////////////////////
 //
@@ -209,6 +221,7 @@ void readPacketThread(void const *argument)
     {
      packetPointer = 0;
      flagPacketReceived = 1;
+
      if (++packetHead >= PACKET_BUFFER_LENGTH) packetHead = 0;
     }
     else if (rxBuffer[rxMessageTail] == 0x18) firmwareReset(USER_RESET_ERROR);
@@ -263,7 +276,7 @@ void parsePacketThread(void const *argument)
     flagPacketReceived = 0;
    taskEXIT_CRITICAL();
 
-   //TODO - We want to check if the packet is just an echo of a message we just sent.
+/*   //TODO - We want to check if the packet is just an echo of a message we just sent.
    //If it is, then clear the flag and wait for next packet.  Don't add it to the packetBuffer for parsing
    //If it is not, then there was contention and we need to backoff and retry.
    if (memcmp(&command, &lastMsg, strlen(lastMsg)) != 0)
@@ -271,7 +284,7 @@ void parsePacketThread(void const *argument)
    	   retryWaitTick = HAL_GetTick() + rand();
       } else {
    	   retryWaitTick = 0;
-      }
+      }*/
 
    if (i < RX_BUFFER_LENGTH)  // Check for Rx Buffer Overrun
    {
@@ -411,9 +424,7 @@ void monitorThread(void const *argument)
   #endif
 
   #if CHECK_STACK == 1
-#ifdef BLINKY
    blinkThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(blinkTID);
-#else
    writeMessageThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(writeMessageTID);
    readPacketThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(readPacketTID);
    parsePacketThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(parsePacketTID);
@@ -421,7 +432,6 @@ void monitorThread(void const *argument)
    //writeIOThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(writeIOTID);
    monitorThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(monitorTID);
 #endif
-  #endif
 
   // Monitor Push Button State
   taskENTER_CRITICAL();

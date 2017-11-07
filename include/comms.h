@@ -5,7 +5,7 @@
 #include "cmsis_os.h"
 
 #define RX_BUFFER_LENGTH 256
-#define TX_BUFFER_LENGTH 4096
+#define TX_BUFFER_LENGTH 512
 #define PACKET_BUFFER_LENGTH 32
 #define RESPONSE_BUFFER_LENGTH 256
 
