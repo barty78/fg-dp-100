@@ -18,8 +18,7 @@
 #define FLAG_TIMEOUT ((int)0x1000)
 
 
-///////////////////////////////////////////////////////////////////////////////
-//
+/////////////////////////////////////////////////////////////////////////////////
 // HAL_I2C_MasterRxCpltCallback
 //
 //  DESCRIPTION: Called when I2C Receive Complete
@@ -88,7 +87,7 @@ I2C_Result_t i2c_byte_write(uint8_t register_address, uint8_t data)
 		d[1] = data;
 
 		/* Try to transmit via I2C */
-		if (HAL_I2C_Master_Transmit_IT(handleI2C2, (uint16_t)DEFAULT_I2C_ADDR, (uint8_t *)d, 2) != HAL_OK) {
+		if (HAL_I2C_Master_Transmit(handleI2C2, (uint16_t)DEFAULT_I2C_ADDR, (uint8_t *)d, 2) != HAL_OK) {
 			/* Check error */
 			if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
 
