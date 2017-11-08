@@ -55,8 +55,8 @@ uint8_t initThreads()
  osThreadDef(blink, blinkThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
  blinkTID = osThreadCreate(osThread(blink), NULL);
 
- osThreadDef(uart, uartThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
- uartTID = osThreadCreate(osThread(uart), NULL);
+ /*osThreadDef(uart, uartThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+ uartTID = osThreadCreate(osThread(uart), NULL);*/
 
  osThreadDef(writeMessage, writeMessageThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
  writeMessageTID = osThreadCreate(osThread(writeMessage), NULL);
@@ -73,14 +73,15 @@ uint8_t initThreads()
  osThreadDef(writeIO, writeIOThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*2);
  writeIOTID = osThreadCreate(osThread(writeIO), NULL);*/
 
- //osThreadDef(monitor, monitorThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
- //monitorTID = osThreadCreate(osThread(monitor), NULL);
+ osThreadDef(monitor, monitorThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
+ monitorTID = osThreadCreate(osThread(monitor), NULL);
 
 
 
  return 0;
 }
 
+/*
 void uartThread(void const *argument)
 {
 	portTickType xLastWakeTime;
@@ -96,6 +97,7 @@ void uartThread(void const *argument)
 
 	osThreadTerminate(NULL);
 }
+*/
 
 
 //-----------------------------------------------------------------------------
@@ -165,6 +167,11 @@ void writeMessageThread(void const *argument)
 
    taskENTER_CRITICAL();
 
+   if (flagByteTransmitted > 1)
+   {
+	   volatile uint8_t xxx = 1;
+   }
+
    if (flagByteTransmitted == 1)
    {
 	   if (txMessageHead != txMessageTail)  // Data remaining in Transmit Buffer
@@ -175,9 +182,9 @@ void writeMessageThread(void const *argument)
    }
 
    taskEXIT_CRITICAL();
-
+/*
    volatile uint8_t xxx;
-   xxx = flagByteTransmitted;
+   xxx = flagByteTransmitted;*/
 
    osThreadYield();
  }
@@ -269,7 +276,8 @@ void parsePacketThread(void const *argument)
 
   if (received == 1)
   {
-
+	  volatile uint32_t zzz;
+	  zzz = received;
    taskENTER_CRITICAL();
     for (i=0; i<RX_BUFFER_LENGTH && packetBuffer[packetTail][i] != '\n'; i++) command[i] = packetBuffer[packetTail][i];
     if (++packetTail >= PACKET_BUFFER_LENGTH) packetTail = 0;
@@ -410,7 +418,7 @@ void monitorThread(void const *argument)
  char response[RESPONSE_BUFFER_LENGTH];
 
  uint8_t pushButtonsThread, prevButtons;
-
+ size_t freeHeap = configTOTAL_HEAP_SIZE;
 
  taskENTER_CRITICAL();
   prevButtons = pushButtons;
@@ -431,6 +439,7 @@ void monitorThread(void const *argument)
    //readIOThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(readIOTID);
    //writeIOThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(writeIOTID);
    monitorThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(monitorTID);
+   freeHeap = xPortGetFreeHeapSize();
 #endif
 
   // Monitor Push Button State

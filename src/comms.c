@@ -32,7 +32,7 @@
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
  UBaseType_t uxSavedInterruptStatus;
- long xHigherPriorityTaskWoken = pdFALSE;
+ //long xHigherPriorityTaskWoken = pdFALSE;
  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
 #ifdef RS485
   if (UartHandle == hlpuart1)
@@ -41,7 +41,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 #endif
   {
 	  HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
-	  xQueueSendToBackFromISR( RxQueue, (uint8_t*)(&(rxBuffer)), &xHigherPriorityTaskWoken);
+	  //xQueueSendToBackFromISR( RxQueue, (uint8_t*)(&(rxBuffer)), &xHigherPriorityTaskWoken);
    if (++rxMessageHead >= RX_BUFFER_LENGTH) rxMessageHead = 0;
 #ifdef RS485
    HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
@@ -82,8 +82,8 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 
   }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
- volatile uint8_t yyy;
- yyy = flagByteTransmitted;
+/* volatile uint8_t yyy;
+ yyy = flagByteTransmitted;*/
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -150,8 +150,15 @@ uint8_t initComms()
 
   for (uint32_t i=0; i<RX_BUFFER_LENGTH; i++) rxBuffer[i] = 0;
 
-  for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++) packetBuffer[i] = malloc(RX_BUFFER_LENGTH * sizeof(char));  // No need to free this memory since it is used for entire code lifetime
+  for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++) packetBuffer[i] = malloc(RX_BUFFER_LENGTH * sizeof(char));
 
+  /*for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++)
+  {
+	  for (uint32_t j=0; j<RX_BUFFER_LENGTH * sizeof(char); j++)
+	  {
+		  packetBuffer[i][j] = 0; //malloc(RX_BUFFER_LENGTH * sizeof(char));  // No need to free this memory since it is used for entire code lifetime
+	  }
+  }*/
  taskEXIT_CRITICAL();
 #ifdef RS485
  HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);

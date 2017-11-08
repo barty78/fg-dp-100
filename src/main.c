@@ -139,7 +139,7 @@ int main(void)
   //MX_IWDG_Init();
   //MX_CRC_Init();
   //MX_TIM6_Init();
-  MX_RTC_Init();
+  //MX_RTC_Init();
 
   handleUART1 = &huart1;
   handleLPUART1 = &hlpuart1;

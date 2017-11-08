@@ -15,8 +15,8 @@ char lastMsg[PACKET_BUFFER_LENGTH];
 char rxBuffer[RX_BUFFER_LENGTH], txBuffer[TX_BUFFER_LENGTH];
 char* packetBuffer[PACKET_BUFFER_LENGTH];
 
-int rxMessageTail, rxMessageHead, txMessageTail, txMessageHead;
-int packetTail, packetHead, packetPointer, flagPacketReceived;
+unsigned int rxMessageTail, rxMessageHead, txMessageTail, txMessageHead;
+unsigned int packetTail, packetHead, packetPointer, flagPacketReceived;
 
 uint8_t crc_calcCrc8(void *data_pointer, uint16_t number_of_bytes);
 uint8_t initComms();

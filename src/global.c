@@ -35,8 +35,8 @@
 #if CHECK_STACK == 1
 void vApplicationStackOverflowHook(xTaskHandle *pxTask, signed portCHAR *pcTaskName)
 {
- firmwareReset(STACK_OVERFLOW_ERROR);
-// asm("BKPT #0"); // If a stack overflow is detected then the debugger stops the firmware execution here
+ //firmwareReset(STACK_OVERFLOW_ERROR);
+asm("BKPT #0"); // If a stack overflow is detected then the debugger stops the firmware execution here
 }
 #endif
 
