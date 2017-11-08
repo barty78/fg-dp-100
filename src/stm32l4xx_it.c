@@ -44,6 +44,7 @@
 extern ADC_HandleTypeDef hadc1;
 extern UART_HandleTypeDef hlpuart1;
 extern UART_HandleTypeDef huart1;
+extern I2C_HandleTypeDef hi2c2;
 
 extern TIM_HandleTypeDef htim1;
 
@@ -219,6 +220,19 @@ void LPUART1_IRQHandler(void)
   /* USER CODE END LPUART1_IRQn 1 */
 }
 
+/**
+* @brief This function handles I2C2 global interrupt.
+*/
+void I2C2_IRQHandler(void)
+{
+  /* USER CODE BEGIN LPUART1_IRQn 0 */
+
+  /* USER CODE END LPUART1_IRQn 0 */
+  HAL_I2C_IRQHandler(&hi2c2);
+  /* USER CODE BEGIN LPUART1_IRQn 1 */
+
+  /* USER CODE END LPUART1_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 

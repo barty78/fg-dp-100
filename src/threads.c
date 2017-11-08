@@ -55,9 +55,6 @@ uint8_t initThreads()
  osThreadDef(blink, blinkThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
  blinkTID = osThreadCreate(osThread(blink), NULL);
 
- /*osThreadDef(uart, uartThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
- uartTID = osThreadCreate(osThread(uart), NULL);*/
-
  osThreadDef(writeMessage, writeMessageThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
  writeMessageTID = osThreadCreate(osThread(writeMessage), NULL);
 
@@ -81,25 +78,6 @@ uint8_t initThreads()
  return 0;
 }
 
-/*
-void uartThread(void const *argument)
-{
-	portTickType xLastWakeTime;
-	const portTickType xFrequency = 50;
-	char ch;
-
-	RxQueue = xQueueCreate(128, sizeof(portCHAR));
-	TxQueue = xQueueCreate(128, sizeof(portCHAR));
-	for ( ;; )
-	{
-		vTaskDelayUntil(&xLastWakeTime, xFrequency);
-	}
-
-	osThreadTerminate(NULL);
-}
-*/
-
-
 //-----------------------------------------------------------------------------
 
 void blinkThread(void const *argument)
@@ -108,40 +86,13 @@ void blinkThread(void const *argument)
 	for( ;; )
 	{
 		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+		writeMessage("HELLO WORLD\n");
+		pwm(1, 0.2);
 		vTaskDelay(xDelay);
 	}
 
 	osThreadTerminate(NULL);
 }
-
-/*///////////////////////////////////////////////////////////////////////////////
-//
-// commsThread
-//
-//  DESCRIPTION: Call USART Tx Interrupt-Managed transmitter function, "HAL_UART_Transmit_IT".
-//
-//  NOTES:       1. Checks "byteTransmitted" global flag, (set in "HAL_UART_TxCpltCallback")
-//               2. USART is set to transmit only a single byte, (referenced at txBuffer[txMessageTail])
-//
-//  AUTHOR:      Peter Bartlett <peter@masters-young.com.au>
-//
-///////////////////////////////////////////////////////////////////////////////
-
-void commsThread(void const *argument)
-{
-	while(1)
-	{
-#if CHECK_THREADS == 1
-		commsStartTick = HAL_GetTick();
-		commsEndTick = commsStartTick + THREAD_WATCHDOG_DELAY;
-#endif
-
-		osThreadYield();
-	}
-	osThreadTerminate(NULL);
-
-	if (!flagFirmwareReset) firmwareReset(THREAD_ERROR);
-}*/
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -167,11 +118,6 @@ void writeMessageThread(void const *argument)
 
    taskENTER_CRITICAL();
 
-   if (flagByteTransmitted > 1)
-   {
-	   volatile uint8_t xxx = 1;
-   }
-
    if (flagByteTransmitted == 1)
    {
 	   if (txMessageHead != txMessageTail)  // Data remaining in Transmit Buffer
@@ -182,9 +128,6 @@ void writeMessageThread(void const *argument)
    }
 
    taskEXIT_CRITICAL();
-/*
-   volatile uint8_t xxx;
-   xxx = flagByteTransmitted;*/
 
    osThreadYield();
  }
@@ -276,24 +219,27 @@ void parsePacketThread(void const *argument)
 
   if (received == 1)
   {
-	  volatile uint32_t zzz;
-	  zzz = received;
    taskENTER_CRITICAL();
     for (i=0; i<RX_BUFFER_LENGTH && packetBuffer[packetTail][i] != '\n'; i++) command[i] = packetBuffer[packetTail][i];
     if (++packetTail >= PACKET_BUFFER_LENGTH) packetTail = 0;
-    flagPacketReceived = 0;
-   taskEXIT_CRITICAL();
 
-/*   //TODO - We want to check if the packet is just an echo of a message we just sent.
+
+   //TODO - We want to check if the packet is just an echo of a message we just sent.
    //If it is, then clear the flag and wait for next packet.  Don't add it to the packetBuffer for parsing
    //If it is not, then there was contention and we need to backoff and retry.
-   if (memcmp(&command, &lastMsg, strlen(lastMsg)) != 0)
-      {
-   	   retryWaitTick = HAL_GetTick() + rand();
-      } else {
-   	   retryWaitTick = 0;
-      }*/
+   if (flagByteTransmitted && flagPacketReceived)
+   {
+	   if (memcmp(&command, &lastMsg, strlen(lastMsg)) != 0)
+	   {
+		   retryWaitTick = HAL_GetTick() + rand();
+	   } else {
+		   retryWaitTick = 0;
+	   }
+	   if (HAL_GetTick() > retryWaitTick) sendResponse(lastMsg);
 
+	   flagPacketReceived = 0;
+	   taskEXIT_CRITICAL();
+   }
    if (i < RX_BUFFER_LENGTH)  // Check for Rx Buffer Overrun
    {
     command[i] = 0;  // Null terminate the command string

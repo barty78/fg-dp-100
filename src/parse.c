@@ -297,13 +297,13 @@ uint8_t parseCommand(char* command)
      //if (DEBUG) writeMessage("msgVerReadCmd\r\n");
      if (command[4] != ',' ) return 1;
      sprintf(response, "<,83,%s-%s.%s,", HARDWARE_ID, FIRMWARE_VERSION, SVN_RELEASE);
-     //sendResponse(response);
+     sendResponse(response);
     break;
     case '2':  // msgUidReadCmd  Syntax: ">,82,[CRC8]<LF>"
      //if (DEBUG) writeMessage("msgUidReadCmd\r\n");
      if (command[4] != ',' ) return 1;
      sprintf(response, "<,84,%08X-%08X-%08X,", (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
-     //sendResponse(response);
+     sendResponse(response);
     break;
    }
   break;

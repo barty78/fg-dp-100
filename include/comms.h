@@ -11,7 +11,8 @@
 
 UART_HandleTypeDef *handleUART1, *handleLPUART1;
 uint8_t flagByteTransmitted;
-char lastMsg[PACKET_BUFFER_LENGTH];
+uint8_t flagPacketSent;
+char lastMsg[RESPONSE_BUFFER_LENGTH];
 char rxBuffer[RX_BUFFER_LENGTH], txBuffer[TX_BUFFER_LENGTH];
 char* packetBuffer[PACKET_BUFFER_LENGTH];
 

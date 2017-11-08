@@ -32,7 +32,6 @@
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
  UBaseType_t uxSavedInterruptStatus;
- //long xHigherPriorityTaskWoken = pdFALSE;
  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
 #ifdef RS485
   if (UartHandle == hlpuart1)
@@ -40,9 +39,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
   if (UartHandle == handleUART1)
 #endif
   {
-	  HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
-	  //xQueueSendToBackFromISR( RxQueue, (uint8_t*)(&(rxBuffer)), &xHigherPriorityTaskWoken);
-   if (++rxMessageHead >= RX_BUFFER_LENGTH) rxMessageHead = 0;
+	  if (++rxMessageHead >= RX_BUFFER_LENGTH) rxMessageHead = 0;
 #ifdef RS485
    HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
 #else
@@ -78,12 +75,9 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
   {
    if (++txMessageTail >= TX_BUFFER_LENGTH) txMessageTail = 0;
    flagByteTransmitted = 1;  // Set transmission flag: transfer complete
-	  HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
 
   }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
-/* volatile uint8_t yyy;
- yyy = flagByteTransmitted;*/
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -137,6 +131,7 @@ uint8_t initComms()
 {
  taskENTER_CRITICAL();
   flagByteTransmitted = 1;
+  flagPacketSent = 0;
 
   rxMessageTail = 0;
   rxMessageHead = 0;
@@ -152,13 +147,6 @@ uint8_t initComms()
 
   for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++) packetBuffer[i] = malloc(RX_BUFFER_LENGTH * sizeof(char));
 
-  /*for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++)
-  {
-	  for (uint32_t j=0; j<RX_BUFFER_LENGTH * sizeof(char); j++)
-	  {
-		  packetBuffer[i][j] = 0; //malloc(RX_BUFFER_LENGTH * sizeof(char));  // No need to free this memory since it is used for entire code lifetime
-	  }
-  }*/
  taskEXIT_CRITICAL();
 #ifdef RS485
  HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
@@ -193,7 +181,6 @@ uint8_t writeMessage(char* msg)
    if (txMessageHead >= TX_BUFFER_LENGTH) txMessageHead = 0;
   }
  taskEXIT_CRITICAL();
- HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
 
  return 0;
 }
@@ -218,7 +205,6 @@ void sendResponse(char* response)
  char msg[RESPONSE_BUFFER_LENGTH];
 
  sprintf(msg, "%s%02X\n", response, crc);  // Append CRC to message before writing out to Tx
- sprintf(lastMsg, msg);
- HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+ strcpy(lastMsg, msg);
  writeMessage(msg);
 }

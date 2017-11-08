@@ -54,8 +54,6 @@ uint8_t flagFirmwareReset;
 #define NUCLEO 0         // Global Nucleo Development Board flag. Indicates that code is being executed on Nucleo Dev Board. Only set when testing code. Do NOT set in production code!
 #endif
 
-xQueueHandle RxQueue, TxQueue;
-
 #if CHECK_STACK == 1
 // #define configCHECK_FOR_STACK_OVERFLOW 1
 // #define INCLUDE_uxTaskGetStackHighWaterMark 1

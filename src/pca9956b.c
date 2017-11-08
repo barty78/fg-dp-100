@@ -34,13 +34,13 @@ void initPCA(void)
     pwm( ALLPORTS, 0.0 );
     current( ALLPORTS, 0.1 );
 
-    write( init_array, sizeof( init_array ) );
+    i2c_write( init_array, sizeof( init_array ) );
 }
 
 void resetPCA(void)
 {
 	char    v   = 0x06;
-	write( 0x00, &v, 1 );
+	i2c_write( 0x00, &v, 1 );
 }
 
 void blink(uint8_t duty, uint8_t period)
@@ -130,7 +130,7 @@ void currentall( float *vp )
     for ( int i = 0; i <= n_of_ports; i++ )
         data[ i ]   = (uint8_t)(*vp++ * 255.0);
 
-    write( reg_addr, data, sizeof( data ) );
+    i2c_write( reg_addr, data, sizeof( data ) );
 }
 
 char pwm_register_access( int port )

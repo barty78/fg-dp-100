@@ -14,39 +14,34 @@ typedef enum {
 	I2C_Result_Error      /*!< An error has occurred */
 } I2C_Result_t;
 
+/*
 #define RX_BUFFER_LENGTH 256
 #define TX_BUFFER_LENGTH 4096
 #define PACKET_BUFFER_LENGTH 32
 #define RESPONSE_BUFFER_LENGTH 256
+*/
 
 /* Exported macro ------------------------------------------------------------*/
 #define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
 /* Exported functions ------------------------------------------------------- */
 
 /* Size of Transmission buffer */
-#define TXBUFFERSIZE                      (COUNTOF(aTxBuffer) - 1)
+//#define TXBUFFERSIZE                      (COUNTOF(aTxBuffer) - 1)
+#define TXBUFFERSIZE                      (512)
 /* Size of Reception buffer */
 #define RXBUFFERSIZE                      TXBUFFERSIZE
 
-char aTxBuffer[] = "******";
+char aTxBuffer[TXBUFFERSIZE];
 char aRxBuffer[RXBUFFERSIZE];
 
 I2C_HandleTypeDef *handleI2C2;
 int flagI2CByteTransmitted;
 
-//char rxBuffer[RX_BUFFER_LENGTH], txBuffer[TX_BUFFER_LENGTH];
-//char* packetBuffer[PACKET_BUFFER_LENGTH];
-
-//int rxMessageTail, rxMessageHead, txMessageTail, txMessageHead;
-//int packetTail, packetHead, packetPointer, flagPacketReceived;
-
-//uint8_t crc_calcCrc8(void *data_pointer, uint16_t number_of_bytes);
 void initI2C();
 
 I2C_Result_t i2c_read(uint8_t register_adddress, uint8_t* data, uint16_t count);
 I2C_Result_t i2c_byte_read(uint8_t register_address, uint8_t* data);
 I2C_Result_t i2c_write(uint8_t register_address, uint8_t* data, uint16_t count);
 I2C_Result_t i2c_byte_write(uint8_t register_address, uint8_t data);
-
 
 #endif

@@ -51,7 +51,7 @@
 #include "cmsis_os.h"
 #include "comms.h"
 #include "global.h"
-//#include "i2c.h"
+#include "i2c.h"
 
 /* USER CODE BEGIN Includes */
 
@@ -132,8 +132,8 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   //MX_ADC1_Init();
- // MX_I2C2_Init();
- // MX_LPUART1_UART_Init();
+  MX_I2C2_Init();
+  MX_LPUART1_UART_Init();
   MX_USART1_UART_Init();
   //MX_RNG_Init();
   //MX_IWDG_Init();
@@ -143,11 +143,12 @@ int main(void)
 
   handleUART1 = &huart1;
   handleLPUART1 = &hlpuart1;
-  //handleI2C2 = &hi2c2;
+  handleI2C2 = &hi2c2;
 
   /* USER CODE BEGIN 2 */
   initComms();
   initIO();
+  initPCA();
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
