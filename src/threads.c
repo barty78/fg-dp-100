@@ -42,8 +42,8 @@ uint8_t initThreads()
   readPacketEndTick = 0;
   parsePacketStartTick = 0;
   parsePacketEndTick = 0;
-  //readIOStartTick = 0;
-  //readIOEndTick = 0;
+  readIOStartTick = 0;
+  readIOEndTick = 0;
   //writeIOStartTick = 0;
   //writeIOEndTick = 0;
   monitorStartTick = 0;
@@ -64,10 +64,10 @@ uint8_t initThreads()
  osThreadDef(parsePacket, parsePacketThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*8); // + RX_BUFFER_LENGTH/4 + 2);
  parsePacketTID = osThreadCreate(osThread(parsePacket), NULL);
 
- /*osThreadDef(readIO, readIOThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
+ osThreadDef(readIO, readIOThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
  readIOTID = osThreadCreate(osThread(readIO), NULL);
 
- osThreadDef(writeIO, writeIOThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*2);
+ /*osThreadDef(writeIO, writeIOThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*2);
  writeIOTID = osThreadCreate(osThread(writeIO), NULL);*/
 
  osThreadDef(monitor, monitorThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
@@ -83,11 +83,21 @@ uint8_t initThreads()
 void blinkThread(void const *argument)
 {
 	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
+	uint8_t i = 0;
 	for( ;; )
 	{
 		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
-		writeMessage("HELLO WORLD\n");
-		pwm(1, 0.2);
+		//writeMessage("HELLO WORLD\n");
+		taskENTER_CRITICAL();
+		if (i>0)pwm(i-1, 0.0);
+		current(i, 0.75);
+		//osDelay(10);
+		pwm(i, 1.0);
+		//osDelay(10);
+//		reg(MODE2);
+//		pca9956_status();
+		taskEXIT_CRITICAL();
+		if (++i >= n_of_ports) i = 0;
 		vTaskDelay(xDelay);
 	}
 
@@ -274,8 +284,8 @@ void readIOThread(void const *argument)
  while(1)
  {
   #if CHECK_THREADS == 1
-//   readIOStartTick = HAL_GetTick();
-//   readIOEndTick = readIOStartTick + THREAD_WATCHDOG_DELAY;
+   readIOStartTick = HAL_GetTick();
+   readIOEndTick = readIOStartTick + THREAD_WATCHDOG_DELAY;
   #endif
 
   readButtonInputs(debounceFlag, debounceStart, debounceEnd);

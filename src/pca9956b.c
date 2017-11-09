@@ -21,26 +21,42 @@
 
 #include "global.h"
 #include "pca9956b.h"
+#include "i2c.h"
 
-void initPCA(void)
+void pca9956_init(void)
 {
-    char init_array[] = {
-        AUTO_INCREMENT | REGISTER_START,  			//  Command
-        0x00, 0x00,                                 //  MODE1, MODE2
-        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,         //  LEDOUT[5:0]
-        0x80, 0x00,                                 //  GRPPWM, GRPFREQ
-    };
+	char tmp;
 
-    pwm( ALLPORTS, 0.0 );
-    current( ALLPORTS, 0.1 );
+	pca9956_hardreset();
+	HAL_Delay(100);	i2c_write( REGISTER_START, init_array, sizeof(init_array)/sizeof(init_array[0]));
 
-    i2c_write( init_array, sizeof( init_array ) );
+	pwmall( 0.0 );
+	HAL_Delay(100);
+	currentall( 0.1 );
+	HAL_Delay(100);
+	i2c_byte_read(PWMALL, tmp);
 }
 
-void resetPCA(void)
+void pca9956_status(void)
+{
+	char tmp;
+	char reg_addr = PWMALL;
+
+	i2c_byte_read(PWMALL, tmp);
+}
+
+void pca9956_hardreset(void)
+{
+	HAL_GPIO_WritePin(PCA_RST_GPIO_Port, PCA_RST_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(PCA_RST_GPIO_Port, PCA_RST_Pin, GPIO_PIN_SET);
+	HAL_Delay(100);
+	HAL_GPIO_WritePin(PCA_OE_GPIO_Port, PCA_OE_Pin, GPIO_PIN_RESET);
+}
+
+void pca9956_reset(void)
 {
 	char    v   = 0x06;
-	i2c_write( 0x00, &v, 1 );
+	//i2c_write( 0x00, &v, 1 );
 }
 
 void blink(uint8_t duty, uint8_t period)
@@ -53,7 +69,7 @@ void blink(uint8_t duty, uint8_t period)
 	data[0] = (float) duty / 256;
 	data[1] = ((float) period * 15.26) - 1;
 
-	i2c_write( GRPPWM, data, 2);
+	//i2c_write( GRPPWM, data, 2);
 }
 
 void display( char* value )
@@ -77,12 +93,42 @@ void display( char* value )
 	pwmdisplay(&tmp);
 }
 
+void reg( int reg )
+{
+	unsigned char data[1];
+	data[0] = reg;
+
+	if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, 1, 1) != HAL_OK) {
+		if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
+			Error_Handler();
+		}
+		/* Return error */
+		return I2C_Result_Error;
+	}
+	/* Return OK */
+	return I2C_Result_Ok;
+}
+
 void pwm( int port, float v )
 {
-	char    reg_addr;
+	unsigned char data[2];
 
-	reg_addr    = pwm_register_access( port );
-	i2c_byte_write( reg_addr, (uint8_t)(v * 255.0) );
+	data[0] = pwm_register_access( port );
+	data[1] = (uint8_t)(v * 255.0);
+
+	if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data), 1) != HAL_OK) {
+				/* Check error */
+				if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
+					Error_Handler();
+				}
+
+				/* Return error */
+				return I2C_Result_Error;
+			}
+
+			/* Return OK */
+			return I2C_Result_Ok;
+	//i2c_byte_write( reg_addr, (uint8_t)(v * 255.0) );
 }
 
 void pwmdisplay( float *vp )
@@ -96,41 +142,76 @@ void pwmdisplay( float *vp )
 	{
 		data[i] = (uint8_t)(*vp++ * 255.0);
 	}
-	i2c_write( reg_addr, data, sizeof(data));
+	//i2c_write( reg_addr, data, sizeof(data));
 }
 
-void pwmall( float *vp )
+void pwmall( float v )
 {
-    char reg_addr;
-	char data[ n_of_ports ];
+	unsigned char data[2];
 
-    reg_addr    = pwm_register_access( 0 );
+	data[0] = IREFALL;
+	data[1] = (uint8_t)(v * 255.0);
 
-    for ( int i = 0; i <= n_of_ports; i++ )
-        data[ i ]   = (uint8_t)(*vp++ * 255.0);
+    if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data), 1) != HAL_OK) {
+            				/* Check error */
+            				if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
+            					Error_Handler();
+            				}
 
-    i2c_write( reg_addr, data, sizeof( data ) );
+            				/* Return error */
+            				return I2C_Result_Error;
+            			}
+
+            			/* Return OK */
+            			return I2C_Result_Ok;
+    //i2c_write( reg_addr, data, sizeof( data ) );
 }
 
 void current( int port, float v )
 {
-    char    reg_addr;
+    unsigned char data[2];
 
-    reg_addr    = current_register_access( port );
-    i2c_byte_write( reg_addr, (uint8_t)(v * 255.0) );
+    data[0] = current_register_access( port );
+    data[1] = (uint8_t)(v * 255.0);
+
+    if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data), 1) != HAL_OK) {
+    				/* Check error */
+    				if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
+    					Error_Handler();
+    				}
+
+    				/* Return error */
+    				return I2C_Result_Error;
+    			}
+
+    			/* Return OK */
+    			return I2C_Result_Ok;
+
+    //i2c_byte_write( reg_addr, (uint8_t)(v * 255.0) );
 }
 
-void currentall( float *vp )
+void currentall( float v )
 {
-	char    reg_addr;
-	char    data[ n_of_ports + 0 ];
+	unsigned char data[2];
 
-    reg_addr    = pwm_register_access( 0 );
+	data[0] = IREFALL;
+	data[1] = (uint8_t)(v * 255.0);
 
-    for ( int i = 0; i <= n_of_ports; i++ )
-        data[ i ]   = (uint8_t)(*vp++ * 255.0);
 
-    i2c_write( reg_addr, data, sizeof( data ) );
+    if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data), 1) != HAL_OK) {
+        				/* Check error */
+        				if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
+        					Error_Handler();
+        				}
+
+        				/* Return error */
+        				return I2C_Result_Error;
+        			}
+
+        			/* Return OK */
+        			return I2C_Result_Ok;
+
+//    i2c_write( reg_addr, data, sizeof( data ) );
 }
 
 char pwm_register_access( int port )

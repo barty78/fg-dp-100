@@ -37,11 +37,9 @@ char aRxBuffer[RXBUFFERSIZE];
 I2C_HandleTypeDef *handleI2C2;
 int flagI2CByteTransmitted;
 
-void initI2C();
-
-I2C_Result_t i2c_read(uint8_t register_adddress, uint8_t* data, uint16_t count);
-I2C_Result_t i2c_byte_read(uint8_t register_address, uint8_t* data);
-I2C_Result_t i2c_write(uint8_t register_address, uint8_t* data, uint16_t count);
+I2C_Result_t i2c_read(uint8_t register_adddress, uint8_t *data, uint16_t count);
+I2C_Result_t i2c_byte_read(uint8_t register_address, uint8_t data);
+I2C_Result_t i2c_write(uint8_t dev_address, uint8_t *data, uint8_t size);
 I2C_Result_t i2c_byte_write(uint8_t register_address, uint8_t data);
 
 #endif

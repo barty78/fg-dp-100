@@ -3,6 +3,7 @@
 
 #include "stm32l4xx_hal.h"
 #include "cmsis_os.h"
+//#include "i2c.h"
 
 
 #define     ALLPORTS        0xFF
@@ -142,14 +143,23 @@ enum command_reg {
 
 
 enum {
-    DEFAULT_I2C_ADDR    = 0xC0,
+    DEFAULT_I2C_ADDR    = 0x01<<1,
     AUTO_INCREMENT      = 0x80
 };
 
+static const uint8_t init_array[] = {
+        AUTO_INCREMENT | REGISTER_START,  			//  Command
+        0x00, 0x00,                                 //  MODE1, MODE2
+        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,         //  LEDOUT[5:0]
+        0x80, 0x00,                                 //  GRPPWM, GRPFREQ
+    };
+
+
+
 //const int n_of_ports = 24;
 
-void initPCA();
-void resetPCA();
+void pca9956_init();
+void pca9956_reset();
 
 void display(char* value);
 
@@ -158,7 +168,8 @@ void blink(uint8_t duty, uint8_t period);
 void pwm(int port, float v);
 void current(int port, float v);
 void pwmdisplay(float* vp);
-void pwmall(float* vp);
+void pwmall(float v);
+void currentall(float v);
 
 char pwm_register_access( int port );
 char current_register_access( int port );

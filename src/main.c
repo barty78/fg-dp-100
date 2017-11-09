@@ -148,7 +148,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   initComms();
   initIO();
-  initPCA();
+  //pca9956_hardreset();
+  pca9956_init();
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
