@@ -34,7 +34,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
  UBaseType_t uxSavedInterruptStatus;
  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
 #ifdef RS485
-  if (UartHandle == hlpuart1)
+  if (UartHandle == handleLPUART1)
 #else
   if (UartHandle == handleUART1)
 #endif
@@ -75,6 +75,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
   {
    if (++txMessageTail >= TX_BUFFER_LENGTH) txMessageTail = 0;
    flagByteTransmitted = 1;  // Set transmission flag: transfer complete
+//   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);
 
   }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);

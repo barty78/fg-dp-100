@@ -9,6 +9,8 @@
 #define FIRMWARE_VERSION "001"
 #define SVN_RELEASE "571"  // $Revision:$
 
+#define RS485
+
 #define ID_STRING_LENGTH	24
 static char	id_string[ID_STRING_LENGTH+1];
 

@@ -88,6 +88,7 @@ void blinkThread(void const *argument)
 	{
 		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
 		//writeMessage("HELLO WORLD\n");
+/*
 		taskENTER_CRITICAL();
 		if (i>0)pwm(i-1, 0.0);
 		current(i, 0.75);
@@ -98,6 +99,7 @@ void blinkThread(void const *argument)
 //		pca9956_status();
 		taskEXIT_CRITICAL();
 		if (++i >= n_of_ports) i = 0;
+*/
 		vTaskDelay(xDelay);
 	}
 
@@ -133,7 +135,12 @@ void writeMessageThread(void const *argument)
 	   if (txMessageHead != txMessageTail)  // Data remaining in Transmit Buffer
 	   {
 		   flagByteTransmitted = 0;
+#ifdef RS485
+//		   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);							// Enable Transciever
+		   HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);	// Send Message
+#else
 		   HAL_UART_Transmit_IT(handleUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);
+#endif
 	   }
    }
 

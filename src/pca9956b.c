@@ -59,17 +59,21 @@ void pca9956_reset(void)
 	//i2c_write( 0x00, &v, 1 );
 }
 
-void blink(uint8_t duty, uint8_t period)
+void blink(uint8_t en, uint8_t duty, uint8_t period)
 {
-	char data[2];
+	taskENTER_CRITICAL();
+	if (en)
+	{
+		i2c_byte_write(MODE2, DMBLINK);
+		i2c_byte_write(GRPFREQ, period);
+		i2c_byte_write(GRPPWM, duty);
 
-	if (period > 16)
-		period = 16;
-
-	data[0] = (float) duty / 256;
-	data[1] = ((float) period * 15.26) - 1;
-
-	//i2c_write( GRPPWM, data, 2);
+	} else
+	{
+		i2c_byte_write(MODE2, 5);
+		i2c_byte_write(GRPPWM, 0xFF);
+	}
+	taskEXIT_CRITICAL();
 }
 
 void display( char* value )
@@ -109,26 +113,15 @@ void reg( int reg )
 	return I2C_Result_Ok;
 }
 
+void alloff ( void )
+{
+	i2c_byte_write(PWMALL, 0);
+}
+
 void pwm( int port, float v )
 {
-	unsigned char data[2];
 
-	data[0] = pwm_register_access( port );
-	data[1] = (uint8_t)(v * 255.0);
-
-	if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data), 1) != HAL_OK) {
-				/* Check error */
-				if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
-					Error_Handler();
-				}
-
-				/* Return error */
-				return I2C_Result_Error;
-			}
-
-			/* Return OK */
-			return I2C_Result_Ok;
-	//i2c_byte_write( reg_addr, (uint8_t)(v * 255.0) );
+	i2c_byte_write( pwm_register_access(port), (uint8_t)(v * 255.0) );
 }
 
 void pwmdisplay( float *vp )

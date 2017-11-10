@@ -112,6 +112,7 @@ uint8_t parseCommand(char* command)
  uint8_t crcIn = digitsToInt(command, lenCommand-2, 2, 16);
  uint8_t crcOut = crc_calcCrc8(command, lenCommand-2);
  char response[RESPONSE_BUFFER_LENGTH];
+ volatile int xx, yy, zz;
 
  if (crcOut != crcIn)
  {
@@ -133,9 +134,36 @@ uint8_t parseCommand(char* command)
 
  switch(command[2])  // First digit in command packet
  {
-  case '1':  // Solenoid Drivers
+  case '1':  // LEDs
    switch(command[3])  // Second digit in command packet
    {
+   case '1':	// msgLedCmd	Syntax: ">,11,[ledVal:6],[],[],[CRC8]<LF>
+	   if (!DEBUG) writeMessage("msgAllLedCmd\r\n");
+	   if (command[10] != ',') return 1;
+	   xx = digitsToInt(command, 5, 6, 16);
+	   break;
+   case '2':	// msgSingleLedCmd	Syntax: ">,12,[led:2],[pwm:2],[iref:2],[CRC8]<LF>"	Example: ">,12,01,FF,FF,[CRC8]<LF>"
+
+	   if (!DEBUG) writeMessage("msgSingleLedCmd\r\n");
+	   if (command[4] != ',' || command[7] != ',' || command[10] != ',' || command[13] != ',') return 1;
+	   uint8_t port = digitsToInt(command, 5, 2, 10);
+	   pwm(port, (float)digitsToInt(command, 8, 2, 16));
+	   current(port, (float)digitsToInt(command, 11, 2, 16));
+	   break;
+   case '3':	// msgLedBlink		Syntax: ">,13,[CRC8]<LF>"	Syntax: ">,[onOff:1],[period:2],[duty:2],[CRC8]<LF>"	Example: ">,13,1,FF,80,[CRC8]<LF>" (period=16.8s, duty=50%)
+	   if (!DEBUG) writeMessage("msgBlinkLedCmd\r\n");
+	   if (command[4] != ',' || command[6] != ',') return 1;
+
+	   blink(digitsToInt(command, 5, 1, 10), digitsToInt(command, 7, 2, 16), digitsToInt(command, 10, 2, 16));
+	   break;
+   case '4':		// msgLedAllOff		Syntax: ">,14,[CRC8]<LF>"
+	   if (!DEBUG) writeMessage("msgLedAllOffCmd\r\n");
+	   if (command[4] != ',') return 1;
+	   alloff();
+	   break;
+   case '5':
+	   break;
+
     /*case '1':  // msgSolAllOffCmd  Syntax: ">,11,[CRC8]<LF>"
      if (DEBUG) writeMessage("msgSolAllOffCmd\r\n");
      if (command[4] != ',') return 1;

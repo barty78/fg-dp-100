@@ -144,13 +144,15 @@ enum command_reg {
 
 enum {
     DEFAULT_I2C_ADDR    = 0x01<<1,
+	DMBLINK				= 0x20,
     AUTO_INCREMENT      = 0x80
 };
 
 static const uint8_t init_array[] = {
         AUTO_INCREMENT | REGISTER_START,  			//  Command
         0x00, 0x00,                                 //  MODE1, MODE2
-        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,         //  LEDOUT[5:0]
+//        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,         //  LEDOUT[5:0]
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,         //  LEDOUT[5:0]
         0x80, 0x00,                                 //  GRPPWM, GRPFREQ
     };
 
@@ -163,7 +165,7 @@ void pca9956_reset();
 
 void display(char* value);
 
-void blink(uint8_t duty, uint8_t period);
+void blink(uint8_t en, uint8_t duty, uint8_t period);
 
 void pwm(int port, float v);
 void current(int port, float v);

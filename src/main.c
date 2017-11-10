@@ -500,12 +500,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, BUZZER_Pin|RS485_EN_Pin|RS485_TE_Pin|PCA_RST_Pin 
+  HAL_GPIO_WritePin(GPIOB, BUZZER_Pin|RS485_TE_Pin|PCA_RST_Pin
                           |PCA_OE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, RS485_TE_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : BUZZER_Pin RS485_EN_Pin RS485_TE_Pin PCA_RST_Pin 
                            PCA_OE_Pin */
-  GPIO_InitStruct.Pin = BUZZER_Pin|RS485_EN_Pin|RS485_TE_Pin|PCA_RST_Pin 
+  GPIO_InitStruct.Pin = BUZZER_Pin|RS485_TE_Pin|PCA_RST_Pin
                           |PCA_OE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
