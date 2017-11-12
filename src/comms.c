@@ -132,8 +132,8 @@ uint8_t initComms()
 {
  taskENTER_CRITICAL();
   flagByteTransmitted = 1;
-  flagPacketSent = 0;
-
+  flagPacketTransmitted = 0;
+  lastrxMessageTail = 0;
   rxMessageTail = 0;
   rxMessageHead = 0;
   txMessageTail = 0;
@@ -157,6 +157,14 @@ uint8_t initComms()
  return 0;
 }
 
+uint8_t resendMessage(void)
+{
+ taskENTER_CRITICAL();
+  txMessageTail = lasttxMessageTail;
+ taskEXIT_CRITICAL();
+
+ return 0;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -176,6 +184,7 @@ uint8_t initComms()
 uint8_t writeMessage(char* msg)
 {
  taskENTER_CRITICAL();
+  lasttxMessageTail = txMessageTail;
   for (uint32_t i=0; i<strlen(msg); i++)
   {
    txBuffer[txMessageHead++] = msg[i];
