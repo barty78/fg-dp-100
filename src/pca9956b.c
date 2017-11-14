@@ -28,11 +28,12 @@ void pca9956_init(void)
 	char tmp;
 
 	pca9956_hardreset();
-	HAL_Delay(100);	i2c_write( REGISTER_START, init_array, sizeof(init_array)/sizeof(init_array[0]));
+	HAL_Delay(100);
+	i2c_write(init_array, sizeof(init_array)/sizeof(init_array[0]));
 
 	pwmall( 0.0 );
 	HAL_Delay(100);
-	currentall( 0.1 );
+	currentall( 1.0 );
 	HAL_Delay(100);
 	i2c_byte_read(PWMALL, tmp);
 }
@@ -81,20 +82,32 @@ void display( char* value )
 	uint8_t ds1 = digitsToInt(value, 0, 1, 10);
 	uint8_t ds2 = digitsToInt(value, 1, 1, 10);
 
-	uint8_t tmp[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+//	uint8_t ledData[] = {DS1_PWM_REGISTER_START|AUTO_INCREMENT,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	uint8_t ledData[] = {DS1_PWM_REGISTER_START,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	for (int i = 0; i < 7; i++)
 	{
 		if (ds1_DigitLookup[ds1] & (1 << i))
 		{
-			tmp[i] = PWM_ON_VALUE;
+			ledData[i+1] = PWM_ON_VALUE;
 		}
+
 		if (ds2_DigitLookup[ds2] & (1 << i))
 		{
-			tmp[i+7] = PWM_ON_VALUE;
+			ledData[i+8] = PWM_ON_VALUE;
 		}
 	}
-	pwmdisplay(&tmp);
+//	pwmdisplay(ledData, sizeof(tmp)/sizeof(tmp[0]));
+	uint8_t baseAddress = DS1_PWM_REGISTER_START;
+
+	for (int i=1; i<sizeof(ledData)/sizeof(ledData[0]); i++)
+	{
+	 i2c_byte_write(baseAddress, ledData[i]);
+//	 i2c_write(&baseAddress, 1);
+//	 i2c_write(&(ledData[i]), 1);
+	 baseAddress++;
+	}
+//	i2c_write(ledData, sizeof(ledData)/sizeof(ledData[0]));
 }
 
 void reg( int reg )
@@ -124,18 +137,16 @@ void pwm( int port, float v )
 	i2c_byte_write( pwm_register_access(port), (uint8_t)(v * 255.0) );
 }
 
-void pwmdisplay( float *vp )
+void pwmdisplay( uint8_t *data, uint8_t size)
 {
-	char reg_addr;
-	char data[14];
+//	*data |= AUTO_INCREMENT;
+//	data[0] |= AUTO_INCREMENT;
 
-	reg_addr = pwm_register_access(9);
-
-	for (int i = 0; i <= 14; i++ )
+	/*for (int i = 0; i <= 14; i++ )
 	{
-		data[i] = (uint8_t)(*vp++ * 255.0);
-	}
-	//i2c_write( reg_addr, data, sizeof(data));
+		data[i] = (uint8_t)(*data++ * 255.0);
+	}*/
+	i2c_write( data, size);
 }
 
 void pwmall( float v )
@@ -145,19 +156,19 @@ void pwmall( float v )
 	data[0] = IREFALL;
 	data[1] = (uint8_t)(v * 255.0);
 
-    if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data), 1) != HAL_OK) {
-            				/* Check error */
+/*    if (HAL_I2C_Master_Transmit_IT(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data)) != HAL_OK) {
+            				 Check error
             				if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
             					Error_Handler();
             				}
 
-            				/* Return error */
+            				 Return error
             				return I2C_Result_Error;
             			}
 
-            			/* Return OK */
-            			return I2C_Result_Ok;
-    //i2c_write( reg_addr, data, sizeof( data ) );
+            			 Return OK
+            			return I2C_Result_Ok;*/
+    i2c_write( data, sizeof( data )/sizeof(data[0]) );
 }
 
 void current( int port, float v )

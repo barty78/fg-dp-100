@@ -12,6 +12,8 @@
  uint32_t retryWaitTick;
 #endif
 
+TickType_t *xLastWakeTime;
+
 osThreadId blinkTID, uartTID;
 osThreadId writeMessageTID, readPacketTID, parsePacketTID, readIOTID, /*writeIOTID,*/ monitorTID;
 

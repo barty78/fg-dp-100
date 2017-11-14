@@ -82,14 +82,28 @@ uint8_t initThreads()
 
 void blinkThread(void const *argument)
 {
-	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
+	char alive[RESPONSE_BUFFER_LENGTH];
+	const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;
+	const TickType_t xFreq = 30;
+	uint8_t counter = 0;
+	char digits[] = "00";
 	uint8_t i = 0;
+
+	xLastWakeTime = xTaskGetTickCount();
 	for( ;; )
 	{
-		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+		taskENTER_CRITICAL();
+		itoa(counter, digits, 2);
+		if (counter++ > 99)counter = 0;
+		display(digits);
+//		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+//		sprintf(alive, "<,84,%08X-%08X-%08X,", (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
+//		sendResponse(alive);
+//		vTaskDelay(xDelay);
+//		vTaskDelayUntil( &xLastWakeTime, xFreq);
+		taskEXIT_CRITICAL();
 		//writeMessage("HELLO WORLD\n");
 /*
-		taskENTER_CRITICAL();
 		if (i>0)pwm(i-1, 0.0);
 		current(i, 0.75);
 		//osDelay(10);
@@ -97,7 +111,7 @@ void blinkThread(void const *argument)
 		//osDelay(10);
 //		reg(MODE2);
 //		pca9956_status();
-		taskEXIT_CRITICAL();
+
 		if (++i >= n_of_ports) i = 0;
 */
 		vTaskDelay(xDelay);

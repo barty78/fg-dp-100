@@ -156,18 +156,27 @@ I2C_Result_t i2c_read (uint8_t register_address, uint8_t* data, uint16_t count)
 	return I2C_Result_Ok;
 }
 
-I2C_Result_t i2c_write(uint8_t register_address, uint8_t *data, uint8_t size)
+I2C_Result_t i2c_write(uint8_t *data, uint8_t size)
 {
+	while (HAL_I2C_GetState(handleI2C2) != HAL_I2C_STATE_READY)
+	    {
+	    }
+
+	do
+	{
 	/* Try to transmit via I2C */
-	if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, size, 1) != HAL_OK) {
-		/* Check error */
+	if (HAL_I2C_Master_Transmit_IT(handleI2C2, DEFAULT_I2C_ADDR, data, size) != HAL_OK) {
+		/* Check error
 		if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
 			Error_Handler();
-		}
-
+		}*/
+		Error_Handler();
 		/* Return error */
 		return I2C_Result_Error;
 	}
+
+	}
+	while(HAL_I2C_GetError(handleI2C2) == HAL_I2C_ERROR_AF);
 
 	/* Return OK */
 	return I2C_Result_Ok;

@@ -164,52 +164,6 @@ uint8_t parseCommand(char* command)
    case '5':
 	   break;
 
-    /*case '1':  // msgSolAllOffCmd  Syntax: ">,11,[CRC8]<LF>"
-     if (DEBUG) writeMessage("msgSolAllOffCmd\r\n");
-     if (command[4] != ',') return 1;
-     taskENTER_CRITICAL();
-      for (uint8_t i=0; i<24; i++) writeSolenoid(i, SOLENOID_OFF, 0);  // Turn OFF all solenoids
-     taskEXIT_CRITICAL();
-     sendResponse("<,12,");
-    break;
-    case '3':  // msgSolWriteCmd  Syntax: ">,13,[solenoid:2],[onOff:1],[duration:3],[CRC8]<LF>"  Example: ">,13,09,1,095,[CRC8]<LF>"
-     if (DEBUG) writeMessage("msgSolWriteCmd\r\n");
-     if (command[4] != ',' || command[7] != ',' || command[9] != ',' || command[13] != ',') return 1;
-
-     solenoid = digitsToInt(command, 5, 2, 10);   // zero-padded two digit ascii-coded decimal number
-     onOff = digitsToInt(command, 8, 1, 10);      // one digit ascii-coded decimal number
-     duration = digitsToInt(command, 10, 3, 10);  // zero-padded three digit ascii-coded decimal number
-
-     if (solenoid > 23 || onOff > 1) return -1;
-     if (onOff == 0 || duration <= 50) duration = 0;
-     if (duration > 250) duration = 250;
-
-     // Do Solenoid Write Command
-     taskENTER_CRITICAL();
-      if (!NUCLEO) writeSolenoid(solenoid, onOff, duration);  // Turn ON selected solenoid
-     taskEXIT_CRITICAL();
-
-     sprintf(response, "<,15,%02d,%d,%03d,", solenoid, onOff, duration);
-     sendResponse(response);
-    break;
-    case '4':  // msgSolStatCmd  Syntax: ">,14,[solenoid],[CRC8]<LF>"  Example: ">,14,09,[CRC8]<LF>"
-     if (DEBUG) writeMessage("msgSolStatCmd\r\n");
-     if (command[4] != ',' || command[7] != ',') return 1;
-
-     solenoid = digitsToInt(command, 5, 2, 10);   // zero-padded two digit ascii-coded decimal number
-     if (solenoid > 23) return -1;
-
-     // Do Solenoid Status Command  (Currently returning the Solenoid Driver's "status" output)
-     taskENTER_CRITICAL();
-//      onOff = Solenoids[solenoid].outputState;
-      status = readSolenoidStatus(solenoid);
-      duration = Solenoids[solenoid].duration;
-     taskEXIT_CRITICAL();
-
-//     sprintf(response, "<,15,%02d,%d,%03d,", solenoid, onOff, duration);
-     sprintf(response, "<,15,%02d,%d,%03d,", solenoid, status, duration);
-     sendResponse(response);
-    break;*/
    }
   break;
 
