@@ -47,6 +47,8 @@ typedef struct
  uint16_t pin;
 } GPIOPin;
 
+GPIOPin buttonInputs[3];
+GPIOPin LABEL_DET;
 
 CRC_HandleTypeDef* handleCRC;
 TIM_HandleTypeDef *handleTIM1;//, *handleTIM6, *handleTIM8;
@@ -57,8 +59,10 @@ uint8_t analogChannel;
 uint16_t ADCValues[2];
 
 uint8_t flagADCConversionCompleted;
+uint8_t panelType;
 uint8_t pushButtons;
-GPIOPin buttonInputs[3];
+
+
 float displaySuppV, displaySuppVSum;
 
 uint8_t initIO();

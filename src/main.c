@@ -52,6 +52,7 @@
 #include "comms.h"
 #include "global.h"
 #include "i2c.h"
+#include "boot.h"
 
 /* USER CODE BEGIN Includes */
 
@@ -112,6 +113,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
+  JumpToBootloader();
 
   /* MCU Configuration----------------------------------------------------------*/
 
@@ -134,7 +136,7 @@ int main(void)
   //MX_ADC1_Init();
   MX_I2C2_Init();
   MX_LPUART1_UART_Init();
-  MX_USART1_UART_Init();
+//  MX_USART1_UART_Init();
   //MX_RNG_Init();
   //MX_IWDG_Init();
   //MX_CRC_Init();
@@ -149,8 +151,9 @@ int main(void)
   initComms();
   initIO();
   //pca9956_hardreset();
-  pca9956_init();
+  pca9956_init(leds_pwm, leds_iref);
   /* USER CODE END 2 */
+
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -511,12 +514,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : BTN1_Pin BTN2_Pin BTN3_Pin */
-  GPIO_InitStruct.Pin = BTN1_Pin|BTN2_Pin|BTN3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }

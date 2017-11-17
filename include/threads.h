@@ -7,23 +7,24 @@
 #include "global.h"
 
 #if CHECK_THREADS == 1
- uint32_t writeMessageStartTick, readPacketStartTick, parsePacketStartTick, readIOStartTick, /*writeIOStartTick,*/ monitorStartTick, uartStartTick;
- uint32_t writeMessageEndTick, readPacketEndTick, parsePacketEndTick, readIOEndTick, /*writeIOEndTick,*/ monitorEndTick, uartEndTick;
+ uint32_t blinkStartTick, blinkEndTick;
+ uint32_t writeMessageStartTick, readPacketStartTick, parsePacketStartTick, readIOStartTick, /*writeIOStartTick,*/ monitorStartTick, heartbeatStartTick;
+ uint32_t writeMessageEndTick, readPacketEndTick, parsePacketEndTick, readIOEndTick, /*writeIOEndTick,*/ monitorEndTick, heartbeatEndTick;
  uint32_t retryWaitTick;
 #endif
 
 TickType_t *xLastWakeTime;
 
-osThreadId blinkTID, uartTID;
-osThreadId writeMessageTID, readPacketTID, parsePacketTID, readIOTID, /*writeIOTID,*/ monitorTID;
+osThreadId blinkTID;
+osThreadId writeMessageTID, readPacketTID, parsePacketTID, readIOTID, /*writeIOTID,*/ monitorTID, heartbeatTID;
 
 uint8_t initThreads();
 
+
 void blinkThread(void const *argument);
 
-void uartThread(void const *argument);
+void heartbeatThread(void const *argument);
 
-//void commsThread(void const *argument);
 void writeMessageThread(void const *argument);
 void readPacketThread(void const *argument);
 void parsePacketThread(void const *argument);

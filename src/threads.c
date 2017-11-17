@@ -19,6 +19,7 @@
 #include "threads.h"
 
 //extern uint16_t ERROR_STATE;
+extern uint8_t displayID;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -48,9 +49,18 @@ uint8_t initThreads()
   //writeIOEndTick = 0;
   monitorStartTick = 0;
   monitorEndTick = 0;
+  blinkStartTick = 0;
+  blinkEndTick = 0;
+  heartbeatStartTick = 0;
+  heartbeatEndTick = 0;
   retryWaitTick = 0;
+
+  displayID = 0;
  #endif
 
+
+ osThreadDef(heartbeat, heartbeatThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+ heartbeatTID = osThreadCreate(osThread(heartbeat), NULL);
 
  osThreadDef(blink, blinkThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
  blinkTID = osThreadCreate(osThread(blink), NULL);
@@ -80,22 +90,58 @@ uint8_t initThreads()
 
 //-----------------------------------------------------------------------------
 
+void heartbeatThread(void const *argument)
+{
+  char alive[RESPONSE_BUFFER_LENGTH];
+  const TickType_t xDelay = 10000 / portTICK_PERIOD_MS;
+//  const TickType_t xFreq = 30;
+//  xLastWakeTime = xTaskGetTickCount();
+  for( ;; )
+  {
+#if CHECK_THREADS == 1
+      heartbeatStartTick = HAL_GetTick();
+      heartbeatEndTick = heartbeatStartTick + THREAD_WATCHDOG_DELAY;
+#endif
+
+      if (displayID == 0)
+        {
+          taskENTER_CRITICAL();
+          sprintf(alive, "<,84,%d,%08X-%08X-%08X,",panelType, (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
+          sendResponse(alive);
+          taskEXIT_CRITICAL();
+        }
+
+      vTaskDelay(xDelay);
+  }
+
+  osThreadTerminate(NULL);
+}
+
+
+
 void blinkThread(void const *argument)
 {
 	char alive[RESPONSE_BUFFER_LENGTH];
-	const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;
+	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
 	const TickType_t xFreq = 30;
-	uint8_t counter = 0;
-	char digits[] = "00";
+	uint8_t counter = 99;
+	char digits[3];
 	uint8_t i = 0;
 
 	xLastWakeTime = xTaskGetTickCount();
 	for( ;; )
 	{
+
+#if CHECK_THREADS == 1
+	    blinkStartTick = HAL_GetTick();
+	    blinkEndTick = blinkStartTick + THREAD_WATCHDOG_DELAY;
+#endif
+
 		taskENTER_CRITICAL();
-		itoa(counter, digits, 2);
-		if (counter++ > 99)counter = 0;
+		itoa10(counter, digits, 3);
+		if (counter-- <= 0)counter = 99;
 		display(digits);
+		refresh();
 //		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
 //		sprintf(alive, "<,84,%08X-%08X-%08X,", (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
 //		sendResponse(alive);
@@ -409,6 +455,7 @@ void monitorThread(void const *argument)
   #endif
 
   #if CHECK_STACK == 1
+   heartbeatThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(heartbeatTID);
    blinkThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(blinkTID);
    writeMessageThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(writeMessageTID);
    readPacketThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(readPacketTID);
@@ -435,6 +482,10 @@ void monitorThread(void const *argument)
   #if CHECK_THREADS == 1
    uint32_t threadWatchdogTick = HAL_GetTick();
 
+   if (blinkStartTick != blinkEndTick && (blinkStartTick < blinkEndTick || threadWatchdogTick < blinkStartTick) && (threadWatchdogTick >= blinkEndTick))
+    firmwareReset(BLINK_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"
+   if (heartbeatStartTick != heartbeatEndTick && (heartbeatStartTick < heartbeatEndTick || threadWatchdogTick < heartbeatStartTick) && (threadWatchdogTick >= heartbeatEndTick))
+    firmwareReset(MONITOR_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"
    if (monitorStartTick != monitorEndTick && (monitorStartTick < monitorEndTick || threadWatchdogTick < monitorStartTick) && (threadWatchdogTick >= monitorEndTick))
     firmwareReset(MONITOR_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"
    if (writeMessageStartTick != writeMessageEndTick && (writeMessageStartTick < writeMessageEndTick || threadWatchdogTick < writeMessageStartTick) && (threadWatchdogTick >= writeMessageEndTick))

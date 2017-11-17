@@ -18,9 +18,53 @@
 #include "comms.h"
 #include "io.h"
 #include "parse.h"
+#include "pca9956b.h"
 
 //extern uint32_t FLOW_COUNT;
 //extern uint32_t FLOW_COUNT_CRC;
+//extern uint8_t leds_pwm[NUM_ALL_LEDS];
+//extern uint8_t leds_iref[NUM_ALL_LEDS];
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// itoa10
+//
+//  DESCRIPTION: Converts unsigned integer to ascii - Base 10
+//
+//  NOTES:       1. Ascii digits are stored at (buff[index] ... buff[index+length-1])
+//
+//  AUTHOR:      Peter Bartlett <peter@masters-young.com.au>
+//
+///////////////////////////////////////////////////////////////////////////////
+
+
+void itoa10(uint32_t val, char* buff, const int buffsize) //lint !e970 need char and int types here. std function call reqd.
+{
+    int32_t i = buffsize - 1;
+    int32_t j;
+
+    if (i >= 0)
+    {
+        buff[i] = '\0';
+        --i;
+
+        // Pick off digits
+        if (1)
+        {
+            for (/* */; /* val && */ (i >= 0); --i)
+            {
+                buff[i] = "0123456789"[val % 10];
+                val /= 10;
+            }
+        }
+
+        // Shift to start of buffer
+        for (j = 0, i++; (i > j) && (i < buffsize); i++, j++)
+        {
+            buff[j] = buff[i];
+        }
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -137,31 +181,41 @@ uint8_t parseCommand(char* command)
   case '1':  // LEDs
    switch(command[3])  // Second digit in command packet
    {
-   case '1':	// msgLedCmd	Syntax: ">,11,[ledVal:6],[],[],[CRC8]<LF>
-	   if (!DEBUG) writeMessage("msgAllLedCmd\r\n");
-	   if (command[10] != ',') return 1;
-	   xx = digitsToInt(command, 5, 6, 16);
+   case '1':	// msgLedCmd	Syntax: ">,11,[ledVal:6],[],[],[CRC8]<LF>"  Example: ">,11,FFFFFF,[CRC8]<LF>"
+//	   if (!DEBUG) writeMessage("msgAllLedCmd\r\n");
+	   if (command[4] != ',' || command[11] != ',') return 1;
+	   pwmleds(digitsToInt(command, 5, 6, 16));
 	   break;
    case '2':	// msgSingleLedCmd	Syntax: ">,12,[led:2],[pwm:2],[iref:2],[CRC8]<LF>"	Example: ">,12,01,FF,FF,[CRC8]<LF>"
 
-	   if (!DEBUG) writeMessage("msgSingleLedCmd\r\n");
+//	   if (!DEBUG) writeMessage("msgSingleLedCmd\r\n");
 	   if (command[4] != ',' || command[7] != ',' || command[10] != ',' || command[13] != ',') return 1;
 	   uint8_t port = digitsToInt(command, 5, 2, 10);
-	   pwm(port, (float)digitsToInt(command, 8, 2, 16));
-	   current(port, (float)digitsToInt(command, 11, 2, 16));
+	   pwm(port, digitsToInt(command, 8, 2, 16));
+	   current(port, digitsToInt(command, 11, 2, 16));
+//	   leds_pwm[port] = digitsToInt(command, 8, 2, 16);
+//	   leds_iref[port] = digitsToInt(command, 11, 2, 16);
 	   break;
    case '3':	// msgLedBlink		Syntax: ">,13,[CRC8]<LF>"	Syntax: ">,[onOff:1],[period:2],[duty:2],[CRC8]<LF>"	Example: ">,13,1,FF,80,[CRC8]<LF>" (period=16.8s, duty=50%)
-	   if (!DEBUG) writeMessage("msgBlinkLedCmd\r\n");
+//	   if (!DEBUG) writeMessage("msgBlinkLedCmd\r\n");
 	   if (command[4] != ',' || command[6] != ',') return 1;
 
 	   blink(digitsToInt(command, 5, 1, 10), digitsToInt(command, 7, 2, 16), digitsToInt(command, 10, 2, 16));
 	   break;
    case '4':		// msgLedAllOff		Syntax: ">,14,[CRC8]<LF>"
-	   if (!DEBUG) writeMessage("msgLedAllOffCmd\r\n");
+//	   if (!DEBUG) writeMessage("msgLedAllOffCmd\r\n");
 	   if (command[4] != ',') return 1;
 	   alloff();
 	   break;
-   case '5':
+   case '5':    // msg7SegValue   Syntax: ">,15,[val:2],[pwm:2],[iref:2],[CRC8]<LF>"  Example:">,99,FF,FF,[CRC8]<LF>"
+     if (command[4] != ',' || command[7] != ',' || command[10] != ',' || command[13] != ',') return 1;
+//     uint8_t value = digitsToInt(command, 5, 2, 10);
+     char val[] = {0, 0};
+     strncpy(val, command[5], 2);
+//     uint8_t tens = (char)digitsToInt(command, 5, 1, 10);
+//     uint8_t ones = (char)digitsToInt(command, 6, 1, 10);
+//     ds1_DigitLookup[tens]
+     display(val);
 	   break;
 
    }
@@ -278,15 +332,20 @@ uint8_t parseCommand(char* command)
     case '1':  // msgVerReadCmd  Syntax: ">,81,[CRC8]<LF>"
      //if (DEBUG) writeMessage("msgVerReadCmd\r\n");
      if (command[4] != ',' ) return 1;
-     sprintf(response, "<,83,%s-%s.%s,", HARDWARE_ID, FIRMWARE_VERSION, SVN_RELEASE);
+     sprintf(response, "<,83,%d,%s-%s.%s,", panelType, HARDWARE_ID, FIRMWARE_VERSION, SVN_RELEASE);
      sendResponse(response);
     break;
     case '2':  // msgUidReadCmd  Syntax: ">,82,[CRC8]<LF>"
      //if (DEBUG) writeMessage("msgUidReadCmd\r\n");
      if (command[4] != ',' ) return 1;
-     sprintf(response, "<,84,%08X-%08X-%08X,", (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
+     sprintf(response, "<,84,%d,%08X-%08X-%08X,", panelType, (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
      sendResponse(response);
     break;
+    case '3':   // msgUIDAck  Syntax: ">,83,[id:1],[CRC8]<LF>"
+      //if (DEBUG) writeMessage("msgUIDAck\r\n");
+      if (command[4] != ',' || command[6] != ',') return 1;
+      displayID = digitsToInt(command, 5, 1, 10);
+
    }
   break;
  }

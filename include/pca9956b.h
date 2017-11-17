@@ -11,6 +11,8 @@
 #define     DEFAULT_CURRENT 0.1
 #define		n_of_ports		24
 #define		PWM_ON_VALUE	255
+#define     NUM_LEDS 14
+#define   NUM_ALL_LEDS    24
 
 static const uint8_t ds1_DigitLookup[10] =
 {
@@ -22,7 +24,8 @@ static const uint8_t ds2_DigitLookup[10] =
 0x77, 0x14, 0x3B, 0x3E, 0x5C, 0x6E, 0x6F, 0x34, 0x7F, 0x7C
 };
 
-
+uint8_t leds_pwm[NUM_ALL_LEDS];
+uint8_t leds_iref[NUM_ALL_LEDS];
 
 /** PCA9956A pin names high-level API i.e. LedPwmOutCC */
 typedef enum {
@@ -53,9 +56,18 @@ typedef enum {
 	L_NC = ~0x0L   /**< for when the pin is left no-connection */
 } LedPinName;
 
+typedef enum {
+  RED,
+  AMBER,
+  GREEN,
+  SEG
+} LEDS;
+
 typedef struct {
 	LedPinName led;
-} LED_PwmOut;
+	uint8_t pwm;
+	uint8_t iref;
+} LED_Out;
 
 /** Name of the PCA9956A registers (for direct register access) */
 enum command_reg {
@@ -149,10 +161,9 @@ enum {
 };
 
 static const uint8_t init_array[] = {
-        AUTO_INCREMENT | REGISTER_START,  			//  Command
         0x00, 0x00,                                 //  MODE1, MODE2
 //        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,         //  LEDOUT[5:0]
-		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,         //  LEDOUT[5:0]
+		0xFF, 0xFF, 0xAB, 0xAA, 0xAA, 0xAA,         //  LEDOUT[5:0]
         0x80, 0x00,                                 //  GRPPWM, GRPFREQ
     };
 
@@ -163,16 +174,17 @@ static const uint8_t init_array[] = {
 void pca9956_init();
 void pca9956_reset();
 
-void display(char* value);
 
+void refresh(void);
 void blink(uint8_t en, uint8_t duty, uint8_t period);
 
-void pwm(int port, float v);
-void current(int port, float v);
-void pwmdisplay(uint8_t* vp, uint8_t size);
-void pwmall(float v);
-void currentall(float v);
-
+void pwm(int port, uint8_t pwm);
+void pwmleds( uint32_t value );
+void pwmdisplay(char* value);
+void current(int port, uint8_t cur);
+void pwmall(uint8_t pwm);
+void currentall(uint8_t cur);
+void currentDisplay(uint8_t cur);
 char pwm_register_access( int port );
 char current_register_access( int port );
 

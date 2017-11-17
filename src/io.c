@@ -95,40 +95,46 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 uint8_t initIO()
 {
- // Assign GPIO Ports and Pins
+  // Assign GPIO Ports and Pins
 
- // Configure unused GPIO pins: PB3 PB4 PB5  (These were originally expected to be used for ADC inputs but couldn't be assigned in the MCU)
+  LABEL_DET.port = GPIOB;
+  LABEL_DET.pin = GPIO_PIN_7;
+
+  // Configure GPIO Ports and Pins for Push Button Inputs
+  for (uint8_t i=0; i<sizeof(buttonInputs); i++)
+    {
+      switch(i)
+      {
+        case 0:  // /BUT1
+          buttonInputs[0].port = GPIOB;
+          buttonInputs[0].pin = GPIO_PIN_3;
+          break;
+        case 1:  // /BUT2
+          buttonInputs[1].port = GPIOB;
+          buttonInputs[1].pin = GPIO_PIN_4;
+          break;
+        case 2:  // /BUT3
+          buttonInputs[2].port = GPIOB;
+          buttonInputs[2].pin = GPIO_PIN_5;
+          break;
+      }
+    }
+
+
+ // Configure unused GPIO pins: PB3 PB4 PB5 (Buttons, with internal pull ups)
  GPIO_InitTypeDef GPIO_InitStruct;
 
- GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5;
+ GPIO_InitStruct.Pin = buttonInputs[0].pin|buttonInputs[1].pin|buttonInputs[2].pin|LABEL_DET.pin;
  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
  GPIO_InitStruct.Pull = GPIO_PULLUP;
  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
- // Configure GPIO Ports and Pins for Push Button Inputs  (Note: /BUT1 swapped with /BUT3 to match PB connector labels on PCB)
- // Silkscreen => Function Mappings: PB4 => Power, PB1 => PB3, PB2 => PB2, PB3 => PB1
- for (uint8_t i=0; i<sizeof(buttonInputs); i++)
- {
-  switch(i)
-  {
-   case 0:  // /BUT1
-    buttonInputs[0].port = GPIOB;
-    buttonInputs[0].pin = GPIO_PIN_3;
-   break;
-   case 1:  // /BUT2
-    buttonInputs[1].port = GPIOB;
-    buttonInputs[1].pin = GPIO_PIN_4;  // GPIO_PIN_13
-   break;
-   case 2:  // /BUT3
-    buttonInputs[2].port = GPIOB;
-    buttonInputs[2].pin = GPIO_PIN_5;
-   break;
-  }
- }
 
  // Initialise Global Variables
  flagADCConversionCompleted = 1;
+
+ panelType = HAL_GPIO_ReadPin(LABEL_DET.port, LABEL_DET.pin);
 
  displaySuppV = 0.0;
 

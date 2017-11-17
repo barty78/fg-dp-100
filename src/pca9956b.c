@@ -23,21 +23,25 @@
 #include "pca9956b.h"
 #include "i2c.h"
 
+/**
+ *
+ */
 void pca9956_init(void)
 {
-	char tmp;
+  for (int i = 0; i < NUM_ALL_LEDS; i++)
+    {
+      leds_pwm[i] = 0;
+      leds_iref[i] = 127;
+    }
 
 	pca9956_hardreset();
 	HAL_Delay(100);
-	i2c_write(init_array, sizeof(init_array)/sizeof(init_array[0]));
-
-	pwmall( 0.0 );
-	HAL_Delay(100);
-	currentall( 1.0 );
-	HAL_Delay(100);
-	i2c_byte_read(PWMALL, tmp);
+	i2c_WriteMulti(AUTO_INCREMENT | REGISTER_START, init_array, (sizeof(init_array)/sizeof(init_array[0]) + 1));
 }
 
+/**
+ *
+ */
 void pca9956_status(void)
 {
 	char tmp;
@@ -46,6 +50,9 @@ void pca9956_status(void)
 	i2c_byte_read(PWMALL, tmp);
 }
 
+/**
+ *
+ */
 void pca9956_hardreset(void)
 {
 	HAL_GPIO_WritePin(PCA_RST_GPIO_Port, PCA_RST_Pin, GPIO_PIN_RESET);
@@ -54,12 +61,30 @@ void pca9956_hardreset(void)
 	HAL_GPIO_WritePin(PCA_OE_GPIO_Port, PCA_OE_Pin, GPIO_PIN_RESET);
 }
 
+/**
+ *
+ */
 void pca9956_reset(void)
 {
 	char    v   = 0x06;
 	//i2c_write( 0x00, &v, 1 );
 }
 
+/**
+ *
+ */
+void refresh(void)
+{
+  i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, leds_pwm, 23);
+  i2c_WriteMulti(IREF_REGISTER_START | AUTO_INCREMENT, leds_iref, 23);
+}
+
+/**
+ *
+ * @param en
+ * @param duty
+ * @param period
+ */
 void blink(uint8_t en, uint8_t duty, uint8_t period)
 {
 	taskENTER_CRITICAL();
@@ -77,39 +102,42 @@ void blink(uint8_t en, uint8_t duty, uint8_t period)
 	taskEXIT_CRITICAL();
 }
 
-void display( char* value )
+/**
+ *
+ * @param value
+ */
+void pwmleds( uint32_t value )
 {
-	uint8_t ds1 = digitsToInt(value, 0, 1, 10);
-	uint8_t ds2 = digitsToInt(value, 1, 1, 10);
+  uint8_t ledData[n_of_ports];
 
-//	uint8_t ledData[] = {DS1_PWM_REGISTER_START|AUTO_INCREMENT,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t ledData[] = {DS1_PWM_REGISTER_START,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-	for (int i = 0; i < 7; i++)
-	{
-		if (ds1_DigitLookup[ds1] & (1 << i))
-		{
-			ledData[i+1] = PWM_ON_VALUE;
-		}
-
-		if (ds2_DigitLookup[ds2] & (1 << i))
-		{
-			ledData[i+8] = PWM_ON_VALUE;
-		}
-	}
-//	pwmdisplay(ledData, sizeof(tmp)/sizeof(tmp[0]));
-	uint8_t baseAddress = DS1_PWM_REGISTER_START;
-
-	for (int i=1; i<sizeof(ledData)/sizeof(ledData[0]); i++)
-	{
-	 i2c_byte_write(baseAddress, ledData[i]);
-//	 i2c_write(&baseAddress, 1);
-//	 i2c_write(&(ledData[i]), 1);
-	 baseAddress++;
-	}
-//	i2c_write(ledData, sizeof(ledData)/sizeof(ledData[0]));
+  for (int i = 0; i < n_of_ports; i++)
+    {
+      ledData[i] = value & (1 << i );
+    }
+  i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, ledData, sizeof(ledData)/sizeof(ledData[0]));
 }
 
+/**
+ *
+ * @param value
+ */
+void display( char* value )
+{
+  uint8_t ds1 = digitsToInt(value, 0, 1, 10);
+  uint8_t ds2 = digitsToInt(value, 1, 1, 10);
+
+  for (int i = 0; i < 7; i++)
+    {
+      leds_pwm[i + L9] = (ds1_DigitLookup[ds1] & (1 << i)) ? PWM_ON_VALUE : 0;
+      leds_pwm[i + L16] = (ds2_DigitLookup[ds2] & (1 << i)) ? PWM_ON_VALUE : 0;
+
+    }
+}
+
+/**
+ *
+ * @param reg
+ */
 void reg( int reg )
 {
 	unsigned char data[1];
@@ -126,98 +154,87 @@ void reg( int reg )
 	return I2C_Result_Ok;
 }
 
+/**
+ *
+ */
 void alloff ( void )
 {
+  for (int i = 0; i < NUM_ALL_LEDS; i++)
+    {
+      leds_pwm[i] = 0;
+    }
 	i2c_byte_write(PWMALL, 0);
 }
 
-void pwm( int port, float v )
+/**
+ *
+ * @param port
+ * @param pwm
+ */
+void pwm( int port, uint8_t pwm )
 {
-
-	i2c_byte_write( pwm_register_access(port), (uint8_t)(v * 255.0) );
+  leds_pwm[port] = pwm;
+  i2c_byte_write( pwm_register_access(port), pwm );
 }
 
-void pwmdisplay( uint8_t *data, uint8_t size)
+/**
+ *
+ * @param pwm
+ */
+void pwmall( uint8_t pwm )
 {
-//	*data |= AUTO_INCREMENT;
-//	data[0] |= AUTO_INCREMENT;
-
-	/*for (int i = 0; i <= 14; i++ )
-	{
-		data[i] = (uint8_t)(*data++ * 255.0);
-	}*/
-	i2c_write( data, size);
+  for (int i = 0; i < NUM_ALL_LEDS; i++)
+    {
+      leds_pwm[i] = 0;
+    }
+  i2c_byte_write( IREFALL, pwm );
 }
 
-void pwmall( float v )
+/**
+ *
+ * @param port
+ * @param cur
+ */
+void current( int port, uint8_t cur )
 {
-	unsigned char data[2];
-
-	data[0] = IREFALL;
-	data[1] = (uint8_t)(v * 255.0);
-
-/*    if (HAL_I2C_Master_Transmit_IT(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data)) != HAL_OK) {
-            				 Check error
-            				if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
-            					Error_Handler();
-            				}
-
-            				 Return error
-            				return I2C_Result_Error;
-            			}
-
-            			 Return OK
-            			return I2C_Result_Ok;*/
-    i2c_write( data, sizeof( data )/sizeof(data[0]) );
+  leds_iref[port] = cur;
+  i2c_byte_write( current_register_access(port), cur );
 }
 
-void current( int port, float v )
+/**
+ *
+ * @param cur
+ */
+void currentall( uint8_t cur )
 {
-    unsigned char data[2];
-
-    data[0] = current_register_access( port );
-    data[1] = (uint8_t)(v * 255.0);
-
-    if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data), 1) != HAL_OK) {
-    				/* Check error */
-    				if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
-    					Error_Handler();
-    				}
-
-    				/* Return error */
-    				return I2C_Result_Error;
-    			}
-
-    			/* Return OK */
-    			return I2C_Result_Ok;
-
-    //i2c_byte_write( reg_addr, (uint8_t)(v * 255.0) );
+  for (int i = 0; i < NUM_ALL_LEDS; i++)
+      {
+        leds_iref[i] = 0;
+      }
+  i2c_byte_write( IREFALL, cur);
 }
 
-void currentall( float v )
+/**
+ *
+ * @param cur
+ */
+void currentDisplay( uint8_t cur)
 {
-	unsigned char data[2];
+  uint8_t data[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-	data[0] = IREFALL;
-	data[1] = (uint8_t)(v * 255.0);
+  for (int i = 0; i < NUM_LEDS; i++)
+    {
+      data[i] = cur;
+    }
 
-
-    if (HAL_I2C_Master_Transmit(handleI2C2, DEFAULT_I2C_ADDR, data, sizeof(data), 1) != HAL_OK) {
-        				/* Check error */
-        				if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
-        					Error_Handler();
-        				}
-
-        				/* Return error */
-        				return I2C_Result_Error;
-        			}
-
-        			/* Return OK */
-        			return I2C_Result_Ok;
-
-//    i2c_write( reg_addr, data, sizeof( data ) );
+  i2c_WriteMulti( DS1_IREF_REGISTER_START | AUTO_INCREMENT, data, sizeof(data)/sizeof(data[0]));
 }
 
+/**
+ *
+ * @param port
+ * @return
+ */
 char pwm_register_access( int port )
 {
     if ( port < n_of_ports )
@@ -226,6 +243,11 @@ char pwm_register_access( int port )
     return ( PWMALL );
 }
 
+/**
+ *
+ * @param port
+ * @return
+ */
 char current_register_access( int port )
 {
     if ( port < n_of_ports )
@@ -233,8 +255,3 @@ char current_register_access( int port )
 
     return ( IREFALL );
 }
-
-/*int number_of_ports( void )
-{
-    return ( n_of_ports );
-}*/

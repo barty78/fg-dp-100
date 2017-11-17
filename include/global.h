@@ -40,6 +40,8 @@ static char	id_string[ID_STRING_LENGTH+1];
 #define MONITOR_TIMEOUT_ERROR      0x000D
 #define I2CREAD_TIMEOUT_ERROR      0x000E
 #define I2CWRITE_TIMEOUT_ERROR     0x000F
+#define DISPLAY_TIMEOUT_ERROR      0x0010
+#define BLINK_TIMEOUT_ERROR        0x0011
 
 #define THREAD_WATCHDOG_DELAY (60000)  // 60 seconds Shutdown Delay, (system will be shutdown when any thread watchdog flag is not reset within this period)
 
@@ -62,7 +64,9 @@ uint8_t flagFirmwareReset;
 
 UBaseType_t blinkThreadStackHighWaterMark;
 
-UBaseType_t writeMessageThreadStackHighWaterMark, readPacketThreadStackHighWaterMark, parsePacketThreadStackHighWaterMark, readIOThreadStackHighWaterMark, writeIOThreadStackHighWaterMark, monitorThreadStackHighWaterMark;
+UBaseType_t writeMessageThreadStackHighWaterMark, readPacketThreadStackHighWaterMark, parsePacketThreadStackHighWaterMark,
+            readIOThreadStackHighWaterMark, writeIOThreadStackHighWaterMark, monitorThreadStackHighWaterMark, blinkThreadStackHighWaterMark,
+            heartbeatThreadStackHighWaterMark;
 
  void vApplicationStackOverflowHook(xTaskHandle *pxTask, signed portCHAR *pcTaskName);
 #endif

@@ -38,8 +38,6 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *I2CHandle)
  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
   if (I2CHandle == handleI2C2)
   {
-   //if (++rxMessageHead >= RX_BUFFER_LENGTH) rxMessageHead = 0;
-   //HAL_I2C_Master_Receive_DMA(handleI2C2, DEFAULT_I2C_ADDR, (uint8_t*)(&(aRxBuffer[rxMessageHead])), 1);
   }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
 }
@@ -64,10 +62,19 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *I2CHandle)
  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
   if (I2CHandle == handleI2C2)
   {
-   //if (++txMessageTail >= TX_BUFFER_LENGTH) txMessageTail = 0;
-   //flagI2CByteTransmitted = 1;  // Set transmission flag: transfer complete
   }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
+}
+
+void HAL_I2C_MemTxCpltCallback (I2C_HandleTypeDef *I2CHandle)
+{
+  UBaseType_t uxSavedInterruptStatus;
+
+  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
+   if (I2CHandle == handleI2C2)
+   {
+   }
+  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
 }
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2CHandle)
@@ -83,7 +90,7 @@ I2C_Result_t i2c_byte_write(uint8_t register_address, uint8_t data)
 		d[1] = data;
 
 		/* Try to transmit via I2C */
-		if (HAL_I2C_Master_Transmit(handleI2C2, (uint16_t)DEFAULT_I2C_ADDR, (uint8_t *)d, sizeof(d)/sizeof(d[0]), 1) != HAL_OK) {
+		if (HAL_I2C_Master_Transmit(handleI2C2, (uint16_t)DEFAULT_I2C_ADDR, (uint8_t *)d, sizeof(d)/sizeof(d[0]), 1000) != HAL_OK) {
 			/* Check error */
 			if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
 				Error_Handler();
@@ -99,18 +106,6 @@ I2C_Result_t i2c_byte_write(uint8_t register_address, uint8_t data)
 
 I2C_Result_t i2c_byte_read(uint8_t register_address, uint8_t data)
 {
-//	/* Send address */
-//	if (HAL_I2C_Master_Transmit(handleI2C2, (uint16_t)DEFAULT_I2C_ADDR, register_address, 1, 1) != HAL_OK) {
-//		/* Check error */
-//		if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
-//			Error_Handler();
-//		}
-//
-//		/* Return error */
-//		return I2C_Result_Error;
-//	}
-//
-//	delay(100);
 	aRxBuffer[0] = register_address;
 
 	/* Receive multiple byte */
@@ -156,30 +151,23 @@ I2C_Result_t i2c_read (uint8_t register_address, uint8_t* data, uint16_t count)
 	return I2C_Result_Ok;
 }
 
-I2C_Result_t i2c_write(uint8_t *data, uint8_t size)
+I2C_Result_t i2c_WriteMulti(uint16_t register_address, uint8_t *data, uint8_t size)
 {
-	while (HAL_I2C_GetState(handleI2C2) != HAL_I2C_STATE_READY)
-	    {
-	    }
-
-	do
-	{
 	/* Try to transmit via I2C */
-	if (HAL_I2C_Master_Transmit_IT(handleI2C2, DEFAULT_I2C_ADDR, data, size) != HAL_OK) {
-		/* Check error
-		if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
-			Error_Handler();
-		}*/
-		Error_Handler();
-		/* Return error */
-		return I2C_Result_Error;
-	}
+		if (HAL_I2C_Mem_Write(handleI2C2, DEFAULT_I2C_ADDR, register_address, register_address > 0xFF ? I2C_MEMADD_SIZE_16BIT : I2C_MEMADD_SIZE_8BIT, data, size, 1000) != HAL_OK) {
+			/* Check error */
+			if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
+			    Error_Handler(handleI2C2);
+			}
 
-	}
-	while(HAL_I2C_GetError(handleI2C2) == HAL_I2C_ERROR_AF);
+			/* Return error */
+			return I2C_Result_Error;
+		}
 
-	/* Return OK */
-	return I2C_Result_Ok;
+		/* Return OK */
+		return I2C_Result_Ok;
 }
+
+
 
 

@@ -64,12 +64,6 @@
 #define RS485_EN_GPIO_Port GPIOB
 #define RS485_TE_Pin GPIO_PIN_11
 #define RS485_TE_GPIO_Port GPIOB
-#define BTN1_Pin GPIO_PIN_3
-#define BTN1_GPIO_Port GPIOB
-#define BTN2_Pin GPIO_PIN_4
-#define BTN2_GPIO_Port GPIOB
-#define BTN3_Pin GPIO_PIN_5
-#define BTN3_GPIO_Port GPIOB
 #define PCA_RST_Pin GPIO_PIN_8
 #define PCA_RST_GPIO_Port GPIOB
 #define PCA_OE_Pin GPIO_PIN_9
