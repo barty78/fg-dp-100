@@ -17,9 +17,10 @@
 #include "comms.h"
 #include "parse.h"
 #include "threads.h"
+#include "packets.h"
 
 //extern uint16_t ERROR_STATE;
-extern uint8_t displayID;
+extern int8_t displayID;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -55,11 +56,11 @@ uint8_t initThreads()
   heartbeatEndTick = 0;
   retryWaitTick = 0;
 
-  displayID = 0;
+  displayID = -1;
  #endif
 
 
- osThreadDef(heartbeat, heartbeatThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+ osThreadDef(heartbeat, heartbeatThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*2);
  heartbeatTID = osThreadCreate(osThread(heartbeat), NULL);
 
  osThreadDef(blink, blinkThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
@@ -93,9 +94,9 @@ uint8_t initThreads()
 void heartbeatThread(void const *argument)
 {
   char alive[RESPONSE_BUFFER_LENGTH];
+  sprintf(alive, "%c,84,%d,%08X-%08X-%08X,", SOF_TX, panelType, (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
   const TickType_t xDelay = 10000 / portTICK_PERIOD_MS;
-//  const TickType_t xFreq = 30;
-//  xLastWakeTime = xTaskGetTickCount();
+
   for( ;; )
   {
 #if CHECK_THREADS == 1
@@ -103,10 +104,9 @@ void heartbeatThread(void const *argument)
       heartbeatEndTick = heartbeatStartTick + THREAD_WATCHDOG_DELAY;
 #endif
 
-      if (displayID == 0)
+      if (displayID == -1)
         {
           taskENTER_CRITICAL();
-          sprintf(alive, "<,84,%d,%08X-%08X-%08X,",panelType, (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
           sendResponse(alive);
           taskEXIT_CRITICAL();
         }
@@ -229,6 +229,7 @@ void writeMessageThread(void const *argument)
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+
 void readPacketThread(void const *argument)
 {
  while(1)
@@ -241,7 +242,7 @@ void readPacketThread(void const *argument)
   taskENTER_CRITICAL();
    if (rxMessageHead != rxMessageTail)
    {
-    if (rxBuffer[rxMessageTail] == '>') packetPointer = 0;
+    if (rxBuffer[rxMessageTail] == SOF_RX) packetPointer = 0;
 
     packetBuffer[packetHead][packetPointer++] = rxBuffer[rxMessageTail];
     if (rxBuffer[rxMessageTail] == '\n')

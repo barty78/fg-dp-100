@@ -28,6 +28,15 @@
  */
 void pca9956_init(void)
 {
+    colour_pwm[RED] = 0xFF;
+    colour_pwm[AMBER] = 0x7F;
+    colour_pwm[GREEN] = 0x10;
+    colour_pwm[SEG] = 0xFF;
+  /*for (int i = 0; i < NUM_LED_COL; i++)
+    {
+      colour_pwm[i] = PWM_OFF;
+    }
+*/
   for (int i = 0; i < NUM_ALL_LEDS; i++)
     {
       leds_pwm[i] = 0;
@@ -108,13 +117,16 @@ void blink(uint8_t en, uint8_t duty, uint8_t period)
  */
 void pwmleds( uint32_t value )
 {
-  uint8_t ledData[n_of_ports];
-
-  for (int i = 0; i < n_of_ports; i++)
+    for (int i = 0; i < NUM_ALL_LEDS; i++)
     {
-      ledData[i] = value & (1 << i );
+      int8_t j = -1;
+      if ((GRP_GREEN & (1 << i)) == (1 << i)) j = GREEN;
+      if ((GRP_AMBER & (1 << i)) == (1 << i)) j = AMBER;
+      if ((GRP_RED & (1 << i)) == (1 << i)) j = RED;
+      if ((GRP_SEG & (1 << i)) == (1 << i)) j = SEG;
+      if (j >= 0) leds_pwm[i] = (value & (1 << i )) ? colour_pwm[j] : PWM_OFF;
     }
-  i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, ledData, sizeof(ledData)/sizeof(ledData[0]));
+  i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, leds_pwm, sizeof(leds_pwm)/sizeof(leds_pwm[0]));
 }
 
 /**

@@ -19,6 +19,8 @@
 #include "io.h"
 #include "parse.h"
 #include "pca9956b.h"
+#include "packets.h"
+
 
 //extern uint32_t FLOW_COUNT;
 //extern uint32_t FLOW_COUNT_CRC;
@@ -138,6 +140,12 @@ uint32_t digitsToInt(char* command, uint32_t index, uint8_t length, uint8_t base
  return result;
 }
 
+void sendAck(void)
+{
+  itoa(displayID, dispCmdAck[5], 10);              // Copy the display ID char to response
+  sendResponse(&dispCmdAck);                      // Send the response
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // parseCommand
@@ -160,13 +168,13 @@ uint8_t parseCommand(char* command)
 
  if (crcOut != crcIn)
  {
-  sprintf(response, "<,FE,\"Invalid CRC: %02X, Valid CRC = %02X for Command [%s]\",", crcIn, crcOut, command);
+  sprintf(response, "%c,FE,\"Invalid CRC: %02X, Valid CRC = %02X for Command [%s]\",", SOF_TX, crcIn, crcOut, command);
   HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
   sendResponse(response);
   if (!DEBUG) return 1;  // Invalid CRC (ignored in DEBUG mode)
  }
 
- if (command[1] != ',') return -1;
+ if (command[1] != SEPARATOR) return -1;
 
  if (DEBUG) // Debug Command Echo
  {
@@ -183,13 +191,13 @@ uint8_t parseCommand(char* command)
    {
    case '1':	// msgLedCmd	Syntax: ">,11,[ledVal:6],[],[],[CRC8]<LF>"  Example: ">,11,FFFFFF,[CRC8]<LF>"
 //	   if (!DEBUG) writeMessage("msgAllLedCmd\r\n");
-	   if (command[4] != ',' || command[11] != ',') return 1;
+	   if (command[4] != SEPARATOR || command[11] != SEPARATOR) return 1;
 	   pwmleds(digitsToInt(command, 5, 6, 16));
 	   break;
    case '2':	// msgSingleLedCmd	Syntax: ">,12,[led:2],[pwm:2],[iref:2],[CRC8]<LF>"	Example: ">,12,01,FF,FF,[CRC8]<LF>"
 
 //	   if (!DEBUG) writeMessage("msgSingleLedCmd\r\n");
-	   if (command[4] != ',' || command[7] != ',' || command[10] != ',' || command[13] != ',') return 1;
+	   if (command[4] != SEPARATOR || command[7] != SEPARATOR || command[10] != SEPARATOR || command[13] != SEPARATOR) return 1;
 	   uint8_t port = digitsToInt(command, 5, 2, 10);
 	   pwm(port, digitsToInt(command, 8, 2, 16));
 	   current(port, digitsToInt(command, 11, 2, 16));
@@ -198,17 +206,17 @@ uint8_t parseCommand(char* command)
 	   break;
    case '3':	// msgLedBlink		Syntax: ">,13,[CRC8]<LF>"	Syntax: ">,[onOff:1],[period:2],[duty:2],[CRC8]<LF>"	Example: ">,13,1,FF,80,[CRC8]<LF>" (period=16.8s, duty=50%)
 //	   if (!DEBUG) writeMessage("msgBlinkLedCmd\r\n");
-	   if (command[4] != ',' || command[6] != ',') return 1;
+	   if (command[4] != SEPARATOR || command[6] != SEPARATOR) return 1;
 
 	   blink(digitsToInt(command, 5, 1, 10), digitsToInt(command, 7, 2, 16), digitsToInt(command, 10, 2, 16));
 	   break;
    case '4':		// msgLedAllOff		Syntax: ">,14,[CRC8]<LF>"
 //	   if (!DEBUG) writeMessage("msgLedAllOffCmd\r\n");
-	   if (command[4] != ',') return 1;
+	   if (command[4] != SEPARATOR) return 1;
 	   alloff();
 	   break;
    case '5':    // msg7SegValue   Syntax: ">,15,[val:2],[pwm:2],[iref:2],[CRC8]<LF>"  Example:">,99,FF,FF,[CRC8]<LF>"
-     if (command[4] != ',' || command[7] != ',' || command[10] != ',' || command[13] != ',') return 1;
+     if (command[4] != SEPARATOR || command[7] != SEPARATOR || command[10] != SEPARATOR || command[13] != SEPARATOR) return 1;
 //     uint8_t value = digitsToInt(command, 5, 2, 10);
      char val[] = {0, 0};
      strncpy(val, command[5], 2);
@@ -219,6 +227,8 @@ uint8_t parseCommand(char* command)
 	   break;
 
    }
+   sendAck();     // Must send ACK back to any LED packet.
+
   break;
 
   case '2':  // Digital Inputs
@@ -226,7 +236,7 @@ uint8_t parseCommand(char* command)
    {
     case '1':  // msgDigInReadAllCmd  Syntax: >,21,[CRC8]<LF>
      if (DEBUG) writeMessage("msgDigInReadAllCmd\r\n");
-     if (command[4] != ',' ) return 1;
+     if (command[4] != SEPARATOR ) return 1;
 
 
     break;
@@ -238,7 +248,7 @@ uint8_t parseCommand(char* command)
    {
     case '1':  // msgAnaInReadAllCmd  Syntax: ">,31,[CRC8]<LF>"
      if (DEBUG) writeMessage("msgAnaInReadAllCmd\r\n");
-     if (command[4] != ',' ) return 1;
+     if (command[4] != SEPARATOR ) return 1;
 
     break;
    }
@@ -249,7 +259,7 @@ uint8_t parseCommand(char* command)
    {
     case '1':  // msgRtdReadAllCmd  Syntax: ">,41,[CRC8]<LF>"
      if (DEBUG) writeMessage("msgRtdReadAllCmd\r\n");
-     if (command[4] != ',' ) return 1;
+     if (command[4] != SEPARATOR ) return 1;
 
 //     sprintf(response, "<,42,%+03d.%02d,%+03d.%02d,%+03d.%02d,%+03d.%02d,", SPLIT_FLOAT_100(RTDValues[0]), SPLIT_FLOAT_100(RTDValues[1]), SPLIT_FLOAT_100(RTDValues[2]), SPLIT_FLOAT_100(RTDValues[3]));
 //     sprintf(response, "<,42,%+03d.%02d,%+03d.%02d,%+03d.%02d,%+03d.%02d,", SPLIT_FLOAT(RTDValues[0], 2), SPLIT_FLOAT(RTDValues[1], 2), SPLIT_FLOAT(RTDValues[2], 2), SPLIT_FLOAT(RTDValues[3], 2));
@@ -264,7 +274,7 @@ uint8_t parseCommand(char* command)
    {
     case '1':  // msgCntReadCmd  Syntax: ">,51,[CRC8]<LF>"
      if (DEBUG) writeMessage("msgCntReadCmd\r\n");
-     if (command[4] != ',' ) return 1;
+     if (command[4] != SEPARATOR ) return 1;
 //     sprintf(response, "<,52,%08X,", (unsigned)FLOW_COUNT);
      sendResponse(response);
     break;
@@ -276,7 +286,7 @@ uint8_t parseCommand(char* command)
     break;
     case '5':  // msgCntCrcReadCmd  Syntax: ">,55,[CRC8]<LF>"
      if (DEBUG) writeMessage("msgCntCrcReadCmd\r\n");
-     if (command[4] != ',' ) return 1;
+     if (command[4] != SEPARATOR ) return 1;
 //     sprintf(response, "<,56,%08X,", (unsigned)FLOW_COUNT_CRC);
      sendResponse(response);
     break;
@@ -288,8 +298,8 @@ uint8_t parseCommand(char* command)
    {
     case '1':  // msgButReadAllCmd  Syntax: ">,61,[CRC8]<LF>"
      if (DEBUG) writeMessage("msgButReadAllCmd\r\n");
-     if (command[4] != ',') return 1;
-     sprintf(response, "<,62,%02X,", (unsigned)pushButtons);
+     if (command[4] != SEPARATOR) return 1;
+     sprintf(response, "%c,62,%02X,", SOF_TX, (unsigned)pushButtons);
      sendResponse(response);
     break;
     /*case '3':  // msgButWriteAllCmd  Syntax: ">,63,[leds:2],[CRC8]<LF>"  Example: ">,63,0A,[CRC8]<LF>"
@@ -306,17 +316,17 @@ uint8_t parseCommand(char* command)
    {
     case '1':  // msgPwrStatReadCmd  Syntax: ">,71,[CRC8]<LF>"
      if (DEBUG) writeMessage("msgPwrStatReadCmd\r\n");
-     if (command[4] != ',' ) return 1;
+     if (command[4] != SEPARATOR ) return 1;
 
      taskENTER_CRITICAL();
-      sprintf(response, "<,72,%02d.%02d,", SPLIT_FLOAT(displaySuppVSum/(float)VOLTAGE_FILTER_LENGTH, 2));
+      sprintf(response, "%c,72,%02d.%02d,", SOF_TX, SPLIT_FLOAT(displaySuppVSum/(float)VOLTAGE_FILTER_LENGTH, 2));
      taskEXIT_CRITICAL();
 
      sendResponse(response);
     break;
     case '3':  // msgPwrShdnCmd  Syntax: ">,73,[delay:3],[CRC8]<LF>"  Example: ">,73,020,[CRC8]<LF>"
      if (DEBUG) writeMessage("msgPwrShdnCmd\r\n");
-     if (command[4] != ',' || command[8] != ',') return 1;
+     if (command[4] != SEPARATOR || command[8] != SEPARATOR) return 1;
 
      delay = digitsToInt(command, 5, 3, 10);   // zero-padded three digit ascii-coded decimal number
      if (delay > 300) delay = 300;
@@ -331,19 +341,19 @@ uint8_t parseCommand(char* command)
    {
     case '1':  // msgVerReadCmd  Syntax: ">,81,[CRC8]<LF>"
      //if (DEBUG) writeMessage("msgVerReadCmd\r\n");
-     if (command[4] != ',' ) return 1;
-     sprintf(response, "<,83,%d,%s-%s.%s,", panelType, HARDWARE_ID, FIRMWARE_VERSION, SVN_RELEASE);
+     if (command[4] != SEPARATOR ) return 1;
+     sprintf(response, "%c,83,%d,%s-%s.%s,", SOF_TX, panelType, HARDWARE_ID, FIRMWARE_VERSION, SVN_RELEASE);
      sendResponse(response);
     break;
     case '2':  // msgUidReadCmd  Syntax: ">,82,[CRC8]<LF>"
      //if (DEBUG) writeMessage("msgUidReadCmd\r\n");
-     if (command[4] != ',' ) return 1;
-     sprintf(response, "<,84,%d,%08X-%08X-%08X,", panelType, (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
+     if (command[4] != SEPARATOR ) return 1;
+     sprintf(response, "%c,84,%d,%08X-%08X-%08X,",SOF_TX, panelType, (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
      sendResponse(response);
     break;
     case '3':   // msgUIDAck  Syntax: ">,83,[id:1],[CRC8]<LF>"
       //if (DEBUG) writeMessage("msgUIDAck\r\n");
-      if (command[4] != ',' || command[6] != ',') return 1;
+      if (command[4] != SEPARATOR || command[6] != SEPARATOR) return 1;
       displayID = digitsToInt(command, 5, 1, 10);
 
    }

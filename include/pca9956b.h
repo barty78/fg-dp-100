@@ -6,13 +6,16 @@
 //#include "i2c.h"
 
 
-#define     ALLPORTS        0xFF
-#define     DEFAULT_PWM     1.0
-#define     DEFAULT_CURRENT 0.1
-#define		n_of_ports		24
-#define		PWM_ON_VALUE	255
-#define     NUM_LEDS 14
-#define   NUM_ALL_LEDS    24
+#define ALLPORTS 0xFF
+#define PWM_OFF 0x00
+#define PWM_FULL_ON 0xFF
+#define DEFAULT_PWM 1.0
+#define DEFAULT_CURRENT 0.1
+#define	n_of_ports 24
+#define	PWM_ON_VALUE 255
+#define NUM_LEDS 14
+#define NUM_ALL_LEDS 24
+#define NUM_LED_COL 4
 
 static const uint8_t ds1_DigitLookup[10] =
 {
@@ -24,8 +27,16 @@ static const uint8_t ds2_DigitLookup[10] =
 0x77, 0x14, 0x3B, 0x3E, 0x5C, 0x6E, 0x6F, 0x34, 0x7F, 0x7C
 };
 
+static uint8_t colour_pwm[4];
+
+
 uint8_t leds_pwm[NUM_ALL_LEDS];
 uint8_t leds_iref[NUM_ALL_LEDS];
+
+struct led_data {
+  uint8_t pwm[NUM_ALL_LEDS];
+  uint8_t iref[NUM_ALL_LEDS];
+} __attribute__((__packed__));
 
 /** PCA9956A pin names high-level API i.e. LedPwmOutCC */
 typedef enum {
@@ -61,7 +72,14 @@ typedef enum {
   AMBER,
   GREEN,
   SEG
-} LEDS;
+} LED;
+
+typedef enum {
+  GRP_RED = 0x07,
+  GRP_AMBER = 0xB8,
+  GRP_GREEN = 0x140,
+  GRP_SEG = 0x7FFE00
+} LED_GRPS;
 
 typedef struct {
 	LedPinName led;
