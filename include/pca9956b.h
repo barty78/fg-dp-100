@@ -29,6 +29,7 @@ static const uint8_t ds2_DigitLookup[10] =
 
 static uint8_t colour_pwm[4];
 
+static uint8_t dim = 1;
 
 uint8_t leds_pwm[NUM_ALL_LEDS];
 uint8_t leds_iref[NUM_ALL_LEDS];
@@ -196,6 +197,7 @@ void pca9956_reset();
 void refresh(void);
 void blink(uint8_t en, uint8_t duty, uint8_t period);
 
+void dimDisplay(float value);
 void pwm(int port, uint8_t pwm);
 void pwmleds( uint32_t value );
 void pwmdisplay(char* value);

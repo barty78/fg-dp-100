@@ -30,7 +30,7 @@ void pca9956_init(void)
 {
     colour_pwm[RED] = 0xFF;
     colour_pwm[AMBER] = 0x7F;
-    colour_pwm[GREEN] = 0x10;
+    colour_pwm[GREEN] = 0x01;
     colour_pwm[SEG] = 0xFF;
   /*for (int i = 0; i < NUM_LED_COL; i++)
     {
@@ -77,6 +77,11 @@ void pca9956_reset(void)
 {
 	char    v   = 0x06;
 	//i2c_write( 0x00, &v, 1 );
+}
+
+void dimDisplay(float value)
+{
+  for (int i = 0; i < NUM_ALL_LEDS; i++) leds_pwm[i] = (uint8_t) leds_pwm[i] * value;
 }
 
 /**
@@ -142,7 +147,6 @@ void display( char* value )
     {
       leds_pwm[i + L9] = (ds1_DigitLookup[ds1] & (1 << i)) ? PWM_ON_VALUE : 0;
       leds_pwm[i + L16] = (ds2_DigitLookup[ds2] & (1 << i)) ? PWM_ON_VALUE : 0;
-
     }
 }
 
