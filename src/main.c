@@ -152,7 +152,7 @@ int main(void)
   initIO();
   //pca9956_hardreset();
   pca9956_init(leds_pwm, leds_iref);
-  for (int i = 0; i < NUM_ALL_LEDS; i++) pwm(i, 0xFF);
+//  for (int i = 0; i < NUM_ALL_LEDS; i++) pwm(i, 0xFF);
   /* USER CODE END 2 */
 
 

@@ -93,7 +93,8 @@ uint8_t initThreads()
 
 void heartbeatThread(void const *argument)
 {
-  char alive[RESPONSE_BUFFER_LENGTH];
+
+char alive[RESPONSE_BUFFER_LENGTH];
   sprintf(alive, "%c,84,%d,%08X-%08X-%08X,", SOF_TX, panelType, (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
   const TickType_t xDelay = 10000 / portTICK_PERIOD_MS;
 
@@ -447,6 +448,7 @@ void monitorThread(void const *argument)
 
  taskENTER_CRITICAL();
   prevButtons = pushButtons;
+  buttonPressedTick = 0;
  taskEXIT_CRITICAL();
 
  while(1)
@@ -474,12 +476,32 @@ void monitorThread(void const *argument)
    displaySuppV = displaySuppVSum/(float)VOLTAGE_FILTER_LENGTH;
   taskEXIT_CRITICAL();
 
-  if (pushButtonsThread != prevButtons)
-  {
+  if (pushButtonsThread != prevButtons && buttonPressedTick == 0) // && pushButtonsThread != 0)
+    {
+      buttonPressedTick = HAL_GetTick();
+      pushedButton = pushButtonsThread;
+    } else {
+        if (pushButtonsThread == prevButtons && buttonPressedTick > 0)
+          {
+            if (buttonPressedTick + BUTTON_HOLD_DELAY < HAL_GetTick())
+              {
+                sprintf(response, "<,65,%02X,1,", (unsigned)pushedButton);    // Send message with long press flag
+              } else {
+                  sprintf(response, "<,65,%02X,0,", (unsigned)pushedButton);    // Send message with short press flag
+              }
+            prevButtons = pushButtonsThread;
+            sendResponse(response);
+            buttonPressedTick = 0;
+          }
+    }
+
+
+/*
    prevButtons = pushButtonsThread;
    sprintf(response, "<,65,%02X,", (unsigned)pushButtonsThread);
    sendResponse(response);
   }
+*/
 
   #if CHECK_THREADS == 1
    uint32_t threadWatchdogTick = HAL_GetTick();

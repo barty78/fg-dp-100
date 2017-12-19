@@ -45,6 +45,8 @@ static char	id_string[ID_STRING_LENGTH+1];
 
 #define THREAD_WATCHDOG_DELAY (60000)  // 60 seconds Shutdown Delay, (system will be shutdown when any thread watchdog flag is not reset within this period)
 
+#define BUTTON_HOLD_DELAY (2000)  // 2 seconds Button Hold Delay
+
 #define STM32_UUID ((uint32_t *)0x1FFF7A10)  // STM32F205 Unique Identifier Address
 
 uint8_t flagFirmwareReset;

@@ -61,6 +61,7 @@ uint16_t ADCValues[2];
 uint8_t flagADCConversionCompleted;
 uint8_t panelType;
 uint8_t pushButtons;
+uint8_t pushedButton;
 
 
 float displaySuppV, displaySuppVSum;

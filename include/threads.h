@@ -7,11 +7,13 @@
 #include "global.h"
 
 #if CHECK_THREADS == 1
- uint32_t blinkStartTick, blinkEndTick;
- uint32_t writeMessageStartTick, readPacketStartTick, parsePacketStartTick, readIOStartTick, /*writeIOStartTick,*/ monitorStartTick, heartbeatStartTick;
- uint32_t writeMessageEndTick, readPacketEndTick, parsePacketEndTick, readIOEndTick, /*writeIOEndTick,*/ monitorEndTick, heartbeatEndTick;
- uint32_t retryWaitTick;
+uint32_t blinkStartTick, blinkEndTick;
+uint32_t writeMessageStartTick, readPacketStartTick, parsePacketStartTick, readIOStartTick, /*writeIOStartTick,*/ monitorStartTick, heartbeatStartTick;
+uint32_t writeMessageEndTick, readPacketEndTick, parsePacketEndTick, readIOEndTick, /*writeIOEndTick,*/ monitorEndTick, heartbeatEndTick;
+uint32_t retryWaitTick;
 #endif
+
+uint32_t buttonPressedTick;
 
 TickType_t *xLastWakeTime;
 
