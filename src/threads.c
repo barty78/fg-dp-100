@@ -298,34 +298,39 @@ void parsePacketThread(void const *argument)
   taskEXIT_CRITICAL();
 
   if (received == 1)
-  {
-   taskENTER_CRITICAL();
-    for (i=0; i<RX_BUFFER_LENGTH && packetBuffer[packetTail][i] != '\n'; i++) command[i] = packetBuffer[packetTail][i];
-    if (++packetTail >= PACKET_BUFFER_LENGTH) packetTail = 0;
+    {
+      if (packetBuffer[packetTail][0] == SOF_RX)
+        {
+          taskENTER_CRITICAL();
+          for (i=0; i<RX_BUFFER_LENGTH && packetBuffer[packetTail][i] != '\n'; i++) command[i] = packetBuffer[packetTail][i];
+          if (++packetTail >= PACKET_BUFFER_LENGTH) packetTail = 0;
 
+#ifdef DISABLE
+          //TODO - We want to check if the packet is just an echo of a message we just sent.
+          //If it is, then clear the flag and wait for next packet.  Don't add it to the packetBuffer for parsing
+          //If it is not, then there was contention and we need to backoff and retry.
+          if (flagByteTransmitted && flagPacketReceived)
+            {
+              if (memcmp(&command, &lastMsg, strlen(lastMsg)) != 0)
+                {
+                  retryWaitTick = HAL_GetTick() + rand();
+                } else {
+                    retryWaitTick = 0;
+                }
+              if (HAL_GetTick() > retryWaitTick) sendResponse(lastMsg);
 
-   //TODO - We want to check if the packet is just an echo of a message we just sent.
-   //If it is, then clear the flag and wait for next packet.  Don't add it to the packetBuffer for parsing
-   //If it is not, then there was contention and we need to backoff and retry.
-   if (flagByteTransmitted && flagPacketReceived)
-   {
-	   if (memcmp(&command, &lastMsg, strlen(lastMsg)) != 0)
-	   {
-		   retryWaitTick = HAL_GetTick() + rand();
-	   } else {
-		   retryWaitTick = 0;
-	   }
-	   if (HAL_GetTick() > retryWaitTick) sendResponse(lastMsg);
+            }
+#endif
+          flagPacketReceived = 0;
+          taskEXIT_CRITICAL();
+        }
 
-	   flagPacketReceived = 0;
-	   taskEXIT_CRITICAL();
-   }
-   if (i < RX_BUFFER_LENGTH)  // Check for Rx Buffer Overrun
-   {
-    command[i] = 0;  // Null terminate the command string
-    parseCommand(command);
-   }
-  }
+      if (i < RX_BUFFER_LENGTH)  // Check for Rx Buffer Overrun
+        {
+          command[i] = 0;  // Null terminate the command string
+          parseCommand(command); // Only parse the command if it has a valid SOF char.
+        }
+    }
 
   osThreadYield();
  }
@@ -476,6 +481,7 @@ void monitorThread(void const *argument)
    displaySuppV = displaySuppVSum/(float)VOLTAGE_FILTER_LENGTH;
   taskEXIT_CRITICAL();
 
+#ifdef ADV_BUTTONS
   if (pushButtonsThread != prevButtons && buttonPressedTick == 0) // && pushButtonsThread != 0)
     {
       buttonPressedTick = HAL_GetTick();
@@ -495,13 +501,15 @@ void monitorThread(void const *argument)
           }
     }
 
+#else
+  if (pushButtonsThread != prevButtons)
+    {
+      prevButtons = pushButtonsThread;
+      sprintf(response, "<,65,%02X,", (unsigned)pushButtonsThread);
+      sendResponse(response);
+    }
+#endif
 
-/*
-   prevButtons = pushButtonsThread;
-   sprintf(response, "<,65,%02X,", (unsigned)pushButtonsThread);
-   sendResponse(response);
-  }
-*/
 
   #if CHECK_THREADS == 1
    uint32_t threadWatchdogTick = HAL_GetTick();
