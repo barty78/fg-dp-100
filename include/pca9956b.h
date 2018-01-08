@@ -31,8 +31,8 @@ static uint8_t colour_pwm[4];
 
 static uint8_t dim = 1;
 
-uint8_t leds_pwm[NUM_ALL_LEDS];
-uint8_t leds_iref[NUM_ALL_LEDS];
+static uint8_t leds_pwm[NUM_ALL_LEDS];
+static uint8_t leds_iref[NUM_ALL_LEDS];
 
 struct led_data {
   uint8_t pwm[NUM_ALL_LEDS];

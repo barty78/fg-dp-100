@@ -139,11 +139,11 @@ void blinkThread(void const *argument)
 #endif
 
 		taskENTER_CRITICAL();
-		itoa10(counter, digits, 3);
-		if (counter-- <= 0)counter = 99;
-		display(digits);
+//		itoa10(counter, digits, 3);
+//		if (counter-- <= 0)counter = 99;
+//		display(digits);
+//		refresh();
 
-		refresh();
 //		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
 //		sprintf(alive, "<,84,%08X-%08X-%08X,", (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
 //		sendResponse(alive);

@@ -140,14 +140,29 @@ void pwmleds( uint32_t value )
  */
 void display( char* value )
 {
-  uint8_t ds1 = digitsToInt(value, 0, 1, 10);
-  uint8_t ds2 = digitsToInt(value, 1, 1, 10);
+  uint8_t ds1, ds2, ds1raw, ds2raw;
+  ds1 = digitsToInt(value, 0, 1, 10);
+  ds2 = digitsToInt(value, 1, 1, 10);
+  ds1raw = ds1_DigitLookup[ds1];
+  ds2raw = ds2_DigitLookup[ds2];
 
+
+  displayBits(ds1raw, ds2raw);
+//  for (int i = 0; i < 7; i++)
+//    {
+//      leds_pwm[i + L9] = (ds1_DigitLookup[ds1] & (1 << i)) ? PWM_ON_VALUE : 0;
+//      leds_pwm[i + L16] = (ds2_DigitLookup[ds2] & (1 << i)) ? PWM_ON_VALUE : 0;
+//    }
+}
+
+void displayBits( uint8_t ds1, uint8_t ds2)
+{
   for (int i = 0; i < 7; i++)
-    {
-      leds_pwm[i + L9] = (ds1_DigitLookup[ds1] & (1 << i)) ? PWM_ON_VALUE : 0;
-      leds_pwm[i + L16] = (ds2_DigitLookup[ds2] & (1 << i)) ? PWM_ON_VALUE : 0;
-    }
+      {
+        leds_pwm[i + L9] = (ds1 & (1 << i)) ? PWM_ON_VALUE : 0;
+        leds_pwm[i + L16] = (ds2 & (1 << i)) ? PWM_ON_VALUE : 0;
+      }
+  refresh();
 }
 
 /**
@@ -193,6 +208,15 @@ void pwm( int port, uint8_t pwm )
   i2c_byte_write( pwm_register_access(port), pwm );
 }
 
+void pwm7seg (uint8_t pwm)
+{
+  for (int i = 0; i < 14; i++)
+    {
+      leds_pwm[i + L9] = pwm;
+      i2c_byte_write( pwm_register_access(i + L9), pwm);
+    }
+}
+
 /**
  *
  * @param pwm
@@ -215,6 +239,27 @@ void current( int port, uint8_t cur )
 {
   leds_iref[port] = cur;
   i2c_byte_write( current_register_access(port), cur );
+}
+
+void current7seg( uint8_t cur )
+{
+  for (int i = 0; i < 14; i++ )
+    {
+      leds_iref[i + L9] = cur;
+      i2c_byte_write( current_register_access(i + L9), cur);
+    }
+}
+
+/*
+ *
+ */
+void segoff ( void )
+{
+  for (int i = 0; i < 14; i++)
+    {
+      leds_pwm[i + L9] = 0;
+      i2c_byte_write( current_register_access(i + L9), 0);
+    }
 }
 
 /**

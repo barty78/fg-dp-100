@@ -225,6 +225,22 @@ uint8_t parseCommand(char* command)
 //     ds1_DigitLookup[tens]
      display(val);
 	   break;
+   case '6':    // msg7SegRawValue  Syntax: ">,16,[val:2],[val:2],[pwm:2),[iref:2],[CRC8]<LF>"
+     if (command[4] != SEPARATOR || command[7] != SEPARATOR || command[10] != SEPARATOR || command[13] != SEPARATOR || command[16] != SEPARATOR) return 1;
+     uint8_t val1, val2, pwm, iref;
+//     itoa16(val1, command[5], 2);
+//     itoa16(val2, command[8], 2);
+//     itoa16(pwm, command[11], 2);
+//     itoa16(iref, command[14], 2);
+     val1 = digitsToInt(command, 5, 2, 16);
+     val2 = digitsToInt(command, 8, 2, 16);
+     pwm = digitsToInt(command, 11, 2, 16);
+     iref = digitsToInt(command, 14, 2, 16);
+     segoff();
+     pwm7seg(pwm);
+     current7seg(iref);
+     displayBits(val1, val2);
+     break;
 
    }
    sendAck();     // Must send ACK back to any LED packet.
