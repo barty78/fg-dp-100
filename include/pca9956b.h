@@ -34,10 +34,16 @@ static uint8_t dim = 1;
 static uint8_t leds_pwm[NUM_ALL_LEDS];
 static uint8_t leds_iref[NUM_ALL_LEDS];
 
+//struct led_data {
+
 struct led_data {
   uint8_t pwm[NUM_ALL_LEDS];
   uint8_t iref[NUM_ALL_LEDS];
-} __attribute__((__packed__));
+} leds;
+
+//  uint8_t pwm[NUM_ALL_LEDS];
+//  uint8_t iref[NUM_ALL_LEDS];
+//} __attribute__((__packed__));
 
 /** PCA9956A pin names high-level API i.e. LedPwmOutCC */
 typedef enum {
@@ -81,6 +87,13 @@ typedef enum {
   GRP_GREEN = 0x140,
   GRP_SEG = 0x7FFE00
 } LED_GRPS;
+
+typedef struct {
+  uint8_t red_pwm;
+  uint8_t amber_pwm;
+  uint8_t green_pwm;
+  uint8_t seg_pwm;
+} group_pwm;
 
 typedef struct {
 	LedPinName led;
@@ -207,6 +220,8 @@ void currentall(uint8_t cur);
 void currentDisplay(uint8_t cur);
 char pwm_register_access( int port );
 char current_register_access( int port );
+//void displayBits( uint8_t ds1, uint8_t ds2, uint8_t newpwm);
+
 
 
 #endif

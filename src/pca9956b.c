@@ -40,7 +40,7 @@ void pca9956_init(void)
   for (int i = 0; i < NUM_ALL_LEDS; i++)
     {
       leds_pwm[i] = 0;
-      leds_iref[i] = 127;
+      leds_iref[i] = 255;
     }
 
 	pca9956_hardreset();
@@ -89,8 +89,10 @@ void dimDisplay(float value)
  */
 void refresh(void)
 {
-  i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, leds_pwm, 23);
-  i2c_WriteMulti(IREF_REGISTER_START | AUTO_INCREMENT, leds_iref, 23);
+  uint8_t array[45];
+  memcpy(&array, &leds_pwm, 23);
+  memcpy(&array[23], &leds_iref, 23);
+  i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, array, 46);
 }
 
 /**
@@ -134,11 +136,21 @@ void pwmleds( uint32_t value )
   i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, leds_pwm, sizeof(leds_pwm)/sizeof(leds_pwm[0]));
 }
 
+void setGroupPWM( uint8_t red_pwm, uint8_t amber_pwm, uint8_t green_pwm, uint8_t seg_pwm )
+{
+
+}
+
+void dimLeds( uint8_t value )
+{
+
+}
+
 /**
  *
  * @param value
  */
-void display( char* value )
+void display( char* value, uint8_t pwm)
 {
   uint8_t ds1, ds2, ds1raw, ds2raw;
   ds1 = digitsToInt(value, 0, 1, 10);
@@ -147,7 +159,7 @@ void display( char* value )
   ds2raw = ds2_DigitLookup[ds2];
 
 
-  displayBits(ds1raw, ds2raw);
+  displayBits(ds1raw, ds2raw, pwm);
 //  for (int i = 0; i < 7; i++)
 //    {
 //      leds_pwm[i + L9] = (ds1_DigitLookup[ds1] & (1 << i)) ? PWM_ON_VALUE : 0;
@@ -155,14 +167,16 @@ void display( char* value )
 //    }
 }
 
-void displayBits( uint8_t ds1, uint8_t ds2)
+void displayBits( uint8_t ds1, uint8_t ds2, uint8_t newpwm)
 {
   for (int i = 0; i < 7; i++)
       {
         leds_pwm[i + L9] = (ds1 & (1 << i)) ? PWM_ON_VALUE : 0;
         leds_pwm[i + L16] = (ds2 & (1 << i)) ? PWM_ON_VALUE : 0;
+//      leds_pwm[i + L9] = (ds1 & (1 << i)) ? newpwm : 0;
+//      leds_pwm[i + L16] = (ds2 & (1 << i)) ? newpwm : 0;
       }
-  refresh();
+//  refresh();
 }
 
 /**
@@ -217,6 +231,14 @@ void pwm7seg (uint8_t pwm)
     }
 }
 
+void setleds (uint32_t pwm, uint32_t iref)
+{
+  for (int i = 0; i < NUM_ALL_LEDS; i++)
+    {
+//      leds.pwm[i]
+    }
+}
+
 /**
  *
  * @param pwm
@@ -258,7 +280,7 @@ void segoff ( void )
   for (int i = 0; i < 14; i++)
     {
       leds_pwm[i + L9] = 0;
-      i2c_byte_write( current_register_access(i + L9), 0);
+      i2c_byte_write( pwm_register_access(i + L9), 0);
     }
 }
 

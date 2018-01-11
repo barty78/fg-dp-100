@@ -19,9 +19,9 @@ static char regDispCmdResp[33] = { SOF_TX, SEPARATOR, '8','3', SEPARATOR, '0', S
           '0','0','0','0','0','0','0','0'};
 
 /**
- * ACK Packet - Sent in response to any led set commands
- * Contains SOF, CMD, ID (obtained at registration)
+ * ACK Packet - Sent in response to any led set commands or general heartbeat command
+ * Contains SOF, CMD, ID, BUTTON (obtained at registration)
  */
-static char dispCmdAck[7] = { SOF_TX, SEPARATOR, '9', '9', SEPARATOR, '0', SEPARATOR };
+static char dispCmdAck[] = { SOF_TX, SEPARATOR, '9', '9', SEPARATOR, '0', SEPARATOR, '0', SEPARATOR };
 
 #endif

@@ -20,6 +20,7 @@
 #include "parse.h"
 #include "pca9956b.h"
 #include "packets.h"
+#include "threads.h"
 
 
 //extern uint32_t FLOW_COUNT;
@@ -142,8 +143,24 @@ uint32_t digitsToInt(char* command, uint32_t index, uint8_t length, uint8_t base
 
 void sendAck(void)
 {
-  itoa(displayID, dispCmdAck[5], 10);              // Copy the display ID char to response
-  sendResponse(&dispCmdAck);                      // Send the response
+  osEvent evt;
+  uint8_t val = 0;
+  char tmp[2];
+
+  evt = osMessageGet(buttonQID, 10);
+  if (evt.status == osEventMessage)
+    {
+      taskENTER_CRITICAL();
+      val = evt.value.v;
+      taskEXIT_CRITICAL();
+      itoa(val, tmp, 10);               // Copy the button value to response
+      memcpy(&dispCmdAck[7], tmp, 1);
+    }
+
+  itoa(displayID, tmp, 10);         // Copy the display ID char to response
+  memcpy(&dispCmdAck[5], tmp, 1);
+
+  sendResponse(&dispCmdAck);                  // Send the response
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -187,6 +204,7 @@ uint8_t parseCommand(char* command)
  switch(command[2])  // First digit in command packet
  {
   case '1':  // LEDs
+
    switch(command[3])  // Second digit in command packet
    {
    case '1':	// msgLedCmd	Syntax: ">,11,[ledVal:6],[],[],[CRC8]<LF>"  Example: ">,11,FFFFFF,[CRC8]<LF>"
@@ -220,30 +238,27 @@ uint8_t parseCommand(char* command)
 //     uint8_t value = digitsToInt(command, 5, 2, 10);
      char val[] = {0, 0};
      strncpy(val, command[5], 2);
+     uint8_t ledpwm = digitsToInt(command, 8, 2, 16);
 //     uint8_t tens = (char)digitsToInt(command, 5, 1, 10);
 //     uint8_t ones = (char)digitsToInt(command, 6, 1, 10);
 //     ds1_DigitLookup[tens]
-     display(val);
+     display(val, ledpwm);
 	   break;
    case '6':    // msg7SegRawValue  Syntax: ">,16,[val:2],[val:2],[pwm:2),[iref:2],[CRC8]<LF>"
      if (command[4] != SEPARATOR || command[7] != SEPARATOR || command[10] != SEPARATOR || command[13] != SEPARATOR || command[16] != SEPARATOR) return 1;
      uint8_t val1, val2, pwm, iref;
-//     itoa16(val1, command[5], 2);
-//     itoa16(val2, command[8], 2);
-//     itoa16(pwm, command[11], 2);
-//     itoa16(iref, command[14], 2);
      val1 = digitsToInt(command, 5, 2, 16);
      val2 = digitsToInt(command, 8, 2, 16);
      pwm = digitsToInt(command, 11, 2, 16);
      iref = digitsToInt(command, 14, 2, 16);
-     segoff();
-     pwm7seg(pwm);
      current7seg(iref);
-     displayBits(val1, val2);
+     displayBits(val1, val2, pwm);
      break;
 
    }
+
    sendAck();     // Must send ACK back to any LED packet.
+
 
   break;
 

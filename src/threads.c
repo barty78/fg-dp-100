@@ -22,6 +22,10 @@
 //extern uint16_t ERROR_STATE;
 extern int8_t displayID;
 
+osMessageQDef(buttons, 10, uint8_t);
+osMessageQDef(display, 1, leds);
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // initThreads
@@ -59,6 +63,11 @@ uint8_t initThreads()
   displayID = -1;
  #endif
 
+ buttonQID = osMessageCreate(osMessageQ(buttons), NULL);
+ vQueueAddToRegistry(buttonQID, "buttons");
+
+ displayQID = osMessageCreate(osMessageQ(display), NULL);
+ vQueueAddToRegistry(displayQID, "display");
 
  osThreadDef(heartbeat, heartbeatThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*2);
  heartbeatTID = osThreadCreate(osThread(heartbeat), NULL);
@@ -72,7 +81,7 @@ uint8_t initThreads()
  osThreadDef(readPacket, readPacketThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
  readPacketTID = osThreadCreate(osThread(readPacket), NULL);
 
- osThreadDef(parsePacket, parsePacketThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*8); // + RX_BUFFER_LENGTH/4 + 2);
+ osThreadDef(parsePacket, parsePacketThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*16); // + RX_BUFFER_LENGTH/4 + 2);
  parsePacketTID = osThreadCreate(osThread(parsePacket), NULL);
 
  osThreadDef(readIO, readIOThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
@@ -83,8 +92,6 @@ uint8_t initThreads()
 
  osThreadDef(monitor, monitorThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
  monitorTID = osThreadCreate(osThread(monitor), NULL);
-
-
 
  return 0;
 }
@@ -138,7 +145,8 @@ void blinkThread(void const *argument)
 	    blinkEndTick = blinkStartTick + THREAD_WATCHDOG_DELAY;
 #endif
 
-		taskENTER_CRITICAL();
+//		taskENTER_CRITICAL();
+		refresh();
 //		itoa10(counter, digits, 3);
 //		if (counter-- <= 0)counter = 99;
 //		display(digits);
@@ -147,9 +155,7 @@ void blinkThread(void const *argument)
 //		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
 //		sprintf(alive, "<,84,%08X-%08X-%08X,", (unsigned)(HAL_GetUIDw2()), (unsigned)(HAL_GetUIDw1()), (unsigned)HAL_GetUIDw0());
 //		sendResponse(alive);
-//		vTaskDelay(xDelay);
-//		vTaskDelayUntil( &xLastWakeTime, xFreq);
-		taskEXIT_CRITICAL();
+//		taskEXIT_CRITICAL();
 		//writeMessage("HELLO WORLD\n");
 /*
 		if (i>0)pwm(i-1, 0.0);
@@ -506,7 +512,8 @@ void monitorThread(void const *argument)
     {
       prevButtons = pushButtonsThread;
       sprintf(response, "<,65,%02X,", (unsigned)pushButtonsThread);
-      sendResponse(response);
+      osMessagePut(buttonQID, (unsigned)pushButtonsThread, 10);
+//      sendResponse(response);
     }
 #endif
 

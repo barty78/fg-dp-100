@@ -15,6 +15,8 @@ uint32_t retryWaitTick;
 
 uint32_t buttonPressedTick;
 
+osMessageQId buttonQID, displayQID;
+
 TickType_t *xLastWakeTime;
 
 osThreadId blinkTID;
