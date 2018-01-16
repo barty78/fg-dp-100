@@ -69,11 +69,11 @@ uint8_t initThreads()
  displayQID = osMessageCreate(osMessageQ(display), NULL);
  vQueueAddToRegistry(displayQID, "display");
 
- osThreadDef(heartbeat, heartbeatThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*2);
+ osThreadDef(heartbeat, heartbeatThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE*4);
  heartbeatTID = osThreadCreate(osThread(heartbeat), NULL);
 
- osThreadDef(blink, blinkThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
- blinkTID = osThreadCreate(osThread(blink), NULL);
+// osThreadDef(blink, blinkThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+// blinkTID = osThreadCreate(osThread(blink), NULL);
 
  osThreadDef(writeMessage, writeMessageThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
  writeMessageTID = osThreadCreate(osThread(writeMessage), NULL);
@@ -146,7 +146,7 @@ void blinkThread(void const *argument)
 #endif
 
 //		taskENTER_CRITICAL();
-		refresh();
+//		refresh();
 //		itoa10(counter, digits, 3);
 //		if (counter-- <= 0)counter = 99;
 //		display(digits);
@@ -205,6 +205,7 @@ void writeMessageThread(void const *argument)
 		   flagByteTransmitted = 0;
 #ifdef RS485
 //		   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);							// Enable Transciever
+		   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);                // Disable RX
 		   HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);	// Send Message
 #else
 		   HAL_UART_Transmit_IT(handleUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);
@@ -373,7 +374,7 @@ void readIOThread(void const *argument)
   osThreadYield();
 
 //  readADC();
-  osThreadYield();
+//  osThreadYield();
 
  }
  osThreadTerminate(NULL);
@@ -471,11 +472,11 @@ void monitorThread(void const *argument)
 
   #if CHECK_STACK == 1
    heartbeatThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(heartbeatTID);
-   blinkThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(blinkTID);
+//   blinkThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(blinkTID);
    writeMessageThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(writeMessageTID);
    readPacketThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(readPacketTID);
    parsePacketThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(parsePacketTID);
-   //readIOThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(readIOTID);
+   readIOThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(readIOTID);
    //writeIOThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(writeIOTID);
    monitorThreadStackHighWaterMark = uxTaskGetStackHighWaterMark(monitorTID);
    freeHeap = xPortGetFreeHeapSize();
@@ -521,8 +522,8 @@ void monitorThread(void const *argument)
   #if CHECK_THREADS == 1
    uint32_t threadWatchdogTick = HAL_GetTick();
 
-   if (blinkStartTick != blinkEndTick && (blinkStartTick < blinkEndTick || threadWatchdogTick < blinkStartTick) && (threadWatchdogTick >= blinkEndTick))
-    firmwareReset(BLINK_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"
+//   if (blinkStartTick != blinkEndTick && (blinkStartTick < blinkEndTick || threadWatchdogTick < blinkStartTick) && (threadWatchdogTick >= blinkEndTick))
+//    firmwareReset(BLINK_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"
    if (heartbeatStartTick != heartbeatEndTick && (heartbeatStartTick < heartbeatEndTick || threadWatchdogTick < heartbeatStartTick) && (threadWatchdogTick >= heartbeatEndTick))
     firmwareReset(MONITOR_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"
    if (monitorStartTick != monitorEndTick && (monitorStartTick < monitorEndTick || threadWatchdogTick < monitorStartTick) && (threadWatchdogTick >= monitorEndTick))
@@ -533,9 +534,9 @@ void monitorThread(void const *argument)
     firmwareReset(READPACKET_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"
    if (parsePacketStartTick != parsePacketEndTick && (parsePacketStartTick < parsePacketEndTick || threadWatchdogTick < parsePacketStartTick) && (threadWatchdogTick >= parsePacketEndTick))
     firmwareReset(PARSEPACKET_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"
-   /*if (readIOStartTick != readIOEndTick && (readIOStartTick < readIOEndTick || threadWatchdogTick < readIOStartTick) && (threadWatchdogTick >= readIOEndTick))
+   if (readIOStartTick != readIOEndTick && (readIOStartTick < readIOEndTick || threadWatchdogTick < readIOStartTick) && (threadWatchdogTick >= readIOEndTick))
     firmwareReset(READIO_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"
-   if (writeIOStartTick != writeIOEndTick && (writeIOStartTick < writeIOEndTick || threadWatchdogTick < writeIOStartTick) && (threadWatchdogTick >= writeIOEndTick))
+   /*if (writeIOStartTick != writeIOEndTick && (writeIOStartTick < writeIOEndTick || threadWatchdogTick < writeIOStartTick) && (threadWatchdogTick >= writeIOEndTick))
     firmwareReset(WRITEIO_TIMEOUT_ERROR);  // Ignore tick values before the "wrap"*/
   #endif
 

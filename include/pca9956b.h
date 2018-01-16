@@ -41,6 +41,14 @@ struct led_data {
   uint8_t iref[NUM_ALL_LEDS];
 } leds;
 
+typedef struct {
+  uint32_t ledStateBuffer;  //24 bit led state buffer (on/off)
+  uint32_t group_pwm;       //4 x 8 bit PWM Value for LED groups (Red, Amber, Green, 7-Seg)
+  uint32_t group_iref;      //4 x 8 bit PWM Value for LED groups (Red, Amber, Green, 7-Seg)
+} dispdata;
+
+dispdata displayBuffer;
+
 //  uint8_t pwm[NUM_ALL_LEDS];
 //  uint8_t iref[NUM_ALL_LEDS];
 //} __attribute__((__packed__));
@@ -81,11 +89,24 @@ typedef enum {
   SEG
 } LED;
 
+
+/**
+ * 0 - RED
+ * 1 - RED
+ * 2 - RED
+ * 3 - AMBER
+ * 4 - AMBER
+ * 5 - AMBER
+ * 6 - GREEN
+ * 7 - AMBER
+ * 8 - GREEN
+ * 9-23 - 7SEG
+ */
 typedef enum {
-  GRP_RED = 0x07,
-  GRP_AMBER = 0xB8,
-  GRP_GREEN = 0x140,
-  GRP_SEG = 0x7FFE00
+  GRP_RED = 0x07,     //!< GRP_RED
+  GRP_AMBER = 0xB8,   //!< GRP_AMBER
+  GRP_GREEN = 0x140,  //!< GRP_GREEN
+  GRP_SEG = 0x7FFE00  //!< GRP_SEG
 } LED_GRPS;
 
 typedef struct {
@@ -220,6 +241,7 @@ void currentall(uint8_t cur);
 void currentDisplay(uint8_t cur);
 char pwm_register_access( int port );
 char current_register_access( int port );
+void updateDisplay(dispdata data);
 //void displayBits( uint8_t ds1, uint8_t ds2, uint8_t newpwm);
 
 

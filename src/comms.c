@@ -57,6 +57,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 //
 //  NOTES:       1. Increments Tx Circular Buffer Tail Pointer, (wrapping if necessary)
 //               2. Sets global "flagByteTransmitted" flag
+//               3. Reenables RX
 //
 //  AUTHOR: Keith Willis <keith@masters-young.com.au>
 //
@@ -75,7 +76,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
   {
    if (++txMessageTail >= TX_BUFFER_LENGTH) txMessageTail = 0;
    flagByteTransmitted = 1;  // Set transmission flag: transfer complete
-//   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);
+   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);
 
   }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);

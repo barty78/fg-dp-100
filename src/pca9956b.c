@@ -167,6 +167,56 @@ void display( char* value, uint8_t pwm)
 //    }
 }
 
+/**
+ * @brief This function takes the display data structure and unpacks it into a array buffer to be written to PCA9956B controller
+ * @param data - dispdata structure
+ */
+void updateDisplay(dispdata data)
+{
+  static uint8_t buffer[NUM_ALL_LEDS * 2];    // One buffer to write to I2c, holds pwm & iref for all leds.  Written as a block of regs.
+  static uint32_t grpmask = 0;
+
+//  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, (data.ledStateBuffer & (1 << 24)));
+
+  for (int i = 0; i < NUM_ALL_LEDS; i++)
+    {
+      if ((GRP_RED & (1 << i)) == (1 << i)) grpmask = 0xFF;
+      if ((GRP_AMBER & (1 << i)) == (1 << i)) grpmask = (0xFF << 8);
+      if ((GRP_GREEN & (1 << i)) == (1 << i)) grpmask = (0xFF << 16);
+      if ((GRP_SEG & (1 << i)) == (1 << i)) grpmask = (0xFF << 24);
+
+      /*
+      if ((GRP_RED & (1 << i)) == (1 << i))
+        {
+          grpmask = 0xFF;
+          buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
+          buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask);
+        }
+      if ((GRP_AMBER & (1 << i)) == (1 << i))
+        {
+          grpmask = (0xFF << 8);
+          buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
+          buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask) >> 8;
+        }
+      if ((GRP_GREEN & (1 << i)) == (1 << i))
+        {
+          grpmask = (0xFF << 16);
+          buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
+          buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask) >> 16;
+        }
+      if ((GRP_SEG & (1 << i)) == (1 << i))
+        {
+          grpmask = (0xFF << 24);
+          buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
+          buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask) >> 24;
+        }
+*/
+      buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
+      buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask);
+    }
+  i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, buffer, sizeof(buffer)/sizeof(buffer[0]));
+}
+
 void displayBits( uint8_t ds1, uint8_t ds2, uint8_t newpwm)
 {
   for (int i = 0; i < 7; i++)
@@ -176,7 +226,7 @@ void displayBits( uint8_t ds1, uint8_t ds2, uint8_t newpwm)
 //      leds_pwm[i + L9] = (ds1 & (1 << i)) ? newpwm : 0;
 //      leds_pwm[i + L16] = (ds2 & (1 << i)) ? newpwm : 0;
       }
-//  refresh();
+  refresh();
 }
 
 /**

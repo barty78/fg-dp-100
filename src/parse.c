@@ -255,6 +255,14 @@ uint8_t parseCommand(char* command)
      displayBits(val1, val2, pwm);
      break;
 
+   case '7':    // msgDispCmd  Syntax: ">,11,[ledState:6],[GRPPWM:8],[GRPIREF:8],[CRC8]<LF> Example: ">,11,FFFFFF,FFFFFFFF,FFFFFFFF,[CRC8]<LF>"
+     if (command[4] != SEPARATOR) return 1;
+     dispdata data;
+//     uint32_t tmp = digitsToInt(command, 5, 6, 16);
+     data.ledStateBuffer = digitsToInt(command, 5, 6, 16);
+     data.group_pwm = digitsToInt(command, 12, 8, 16);
+     data.group_iref = digitsToInt(command, 21, 8, 16);
+     updateDisplay(data);
    }
 
    sendAck();     // Must send ACK back to any LED packet.
