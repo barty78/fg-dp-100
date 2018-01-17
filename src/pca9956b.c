@@ -127,10 +127,10 @@ void pwmleds( uint32_t value )
     for (int i = 0; i < NUM_ALL_LEDS; i++)
     {
       int8_t j = -1;
-      if ((GRP_GREEN & (1 << i)) == (1 << i)) j = GREEN;
-      if ((GRP_AMBER & (1 << i)) == (1 << i)) j = AMBER;
-      if ((GRP_RED & (1 << i)) == (1 << i)) j = RED;
-      if ((GRP_SEG & (1 << i)) == (1 << i)) j = SEG;
+      if ((MASK_GRP_GREEN & (1 << i)) == (1 << i)) j = GREEN;
+      if ((MASK_GRP_AMBER & (1 << i)) == (1 << i)) j = AMBER;
+      if ((MASK_GRP_RED & (1 << i)) == (1 << i)) j = RED;
+      if ((MASK_GRP_SEG & (1 << i)) == (1 << i)) j = SEG;
       if (j >= 0) leds_pwm[i] = (value & (1 << i )) ? colour_pwm[j] : PWM_OFF;
     }
   i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, leds_pwm, sizeof(leds_pwm)/sizeof(leds_pwm[0]));
@@ -175,45 +175,34 @@ void updateDisplay(dispdata data)
 {
   static uint8_t buffer[NUM_ALL_LEDS * 2];    // One buffer to write to I2c, holds pwm & iref for all leds.  Written as a block of regs.
   static uint32_t grpmask = 0;
+  static uint8_t shift = 0;
 
-//  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, (data.ledStateBuffer & (1 << 24)));
+  if ((data.ledStateBuffer & (1 << 23)) == (1 << 23))
+    {
+      HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
+    } else {
+        HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+    }
 
   for (int i = 0; i < NUM_ALL_LEDS; i++)
     {
-      if ((GRP_RED & (1 << i)) == (1 << i)) grpmask = 0xFF;
-      if ((GRP_AMBER & (1 << i)) == (1 << i)) grpmask = (0xFF << 8);
-      if ((GRP_GREEN & (1 << i)) == (1 << i)) grpmask = (0xFF << 16);
-      if ((GRP_SEG & (1 << i)) == (1 << i)) grpmask = (0xFF << 24);
+      if ((MASK_GRP_RED & (1 << i)) == (1 << i)) shift = 0; //grpmask = 0xFF;
+      if ((MASK_GRP_AMBER & (1 << i)) == (1 << i)) shift = 8; //grpmask = (0xFF << 8);
+      if ((MASK_GRP_GREEN & (1 << i)) == (1 << i)) shift = 16; //grpmask = (0xFF << 16);
+      if ((MASK_GRP_SEG & (1 << i)) == (1 << i)) shift = 24; //grpmask = (0xFF << 24);
 
-      /*
-      if ((GRP_RED & (1 << i)) == (1 << i))
+
+      if ((data.ledStateBuffer & (1 << i)) == (1 << i))
         {
-          grpmask = 0xFF;
-          buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
-          buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask);
-        }
-      if ((GRP_AMBER & (1 << i)) == (1 << i))
-        {
-          grpmask = (0xFF << 8);
-          buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
-          buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask) >> 8;
-        }
-      if ((GRP_GREEN & (1 << i)) == (1 << i))
-        {
-          grpmask = (0xFF << 16);
-          buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
-          buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask) >> 16;
-        }
-      if ((GRP_SEG & (1 << i)) == (1 << i))
-        {
-          grpmask = (0xFF << 24);
-          buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
-          buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask) >> 24;
-        }
-*/
-      buffer[i] = (data.ledStateBuffer & (1 << i)) ? (data.group_pwm & grpmask) : 0;
-      buffer[i + NUM_ALL_LEDS] = (data.group_iref & grpmask);
+          uint32_t mask = 0xFF << shift;
+          buffer[i] = (data.group_pwm & mask) >> shift;
+        } else
+          {
+            buffer[i] = 0;
+          }
+      buffer[i + NUM_ALL_LEDS] = (data.group_iref & (0xFF << shift)) >> shift;
     }
+
   i2c_WriteMulti(PWM_REGISTER_START | AUTO_INCREMENT, buffer, sizeof(buffer)/sizeof(buffer[0]));
 }
 

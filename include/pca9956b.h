@@ -103,10 +103,10 @@ typedef enum {
  * 9-23 - 7SEG
  */
 typedef enum {
-  GRP_RED = 0x07,     //!< GRP_RED
-  GRP_AMBER = 0xB8,   //!< GRP_AMBER
-  GRP_GREEN = 0x140,  //!< GRP_GREEN
-  GRP_SEG = 0x7FFE00  //!< GRP_SEG
+  MASK_GRP_RED = 0x07,     //!< GRP_RED
+  MASK_GRP_AMBER = 0xB8,   //!< GRP_AMBER
+  MASK_GRP_GREEN = 0x140,  //!< GRP_GREEN
+  MASK_GRP_SEG = 0x7FFE00  //!< GRP_SEG
 } LED_GRPS;
 
 typedef struct {
