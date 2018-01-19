@@ -206,7 +206,20 @@ void writeMessageThread(void const *argument)
 #ifdef RS485
 //		   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);							// Enable Transciever
 		   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);                // Disable RX
-		   HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);	// Send Message
+
+#ifndef TEST
+		   if (txMessageHead <= 0)
+		     {
+		       HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), (TX_BUFFER_LENGTH - txMessageTail) + txMessageHead);  // Send Message
+		     } else {
+		         HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), txMessageHead - txMessageTail);  // Send Message
+
+		     }
+#else
+       HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);  // Send Message
+
+#endif
+
 #else
 		   HAL_UART_Transmit_IT(handleUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);
 #endif

@@ -177,12 +177,13 @@ void updateDisplay(dispdata data)
   static uint32_t grpmask = 0;
   static uint8_t shift = 0;
 
-  if ((data.ledStateBuffer & (1 << 23)) == (1 << 23))
-    {
-      HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
-    } else {
-        HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
-    }
+
+//  if ((data.ledStateBuffer & (1 << BUZZER)) == (1 << BUZZER))
+//    {
+//      HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
+//    } else {
+//        HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+//    }
 
   for (int i = 0; i < NUM_ALL_LEDS; i++)
     {

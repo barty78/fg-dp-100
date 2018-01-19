@@ -186,7 +186,7 @@ uint8_t parseCommand(char* command)
  if (crcOut != crcIn)
  {
   sprintf(response, "%c,FE,\"Invalid CRC: %02X, Valid CRC = %02X for Command [%s]\",", SOF_TX, crcIn, crcOut, command);
-  HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+//  HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
   sendResponse(response);
   if (!DEBUG) return 1;  // Invalid CRC (ignored in DEBUG mode)
  }

@@ -16,6 +16,7 @@
 #define NUM_LEDS 14
 #define NUM_ALL_LEDS 24
 #define NUM_LED_COL 4
+#define BUZZER 23
 
 static const uint8_t ds1_DigitLookup[10] =
 {
