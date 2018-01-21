@@ -28,6 +28,8 @@
  */
 void pca9956_init(void)
 {
+    flagI2CByteSent = 1;
+
     colour_pwm[RED] = 0xFF;
     colour_pwm[AMBER] = 0x7F;
     colour_pwm[GREEN] = 0x01;

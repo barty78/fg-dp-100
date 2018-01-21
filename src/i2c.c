@@ -73,6 +73,8 @@ void HAL_I2C_MemTxCpltCallback (I2C_HandleTypeDef *I2CHandle)
   uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
    if (I2CHandle == handleI2C2)
    {
+
+       flagI2CByteSent = 1;
    }
   taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
 }
@@ -154,16 +156,26 @@ I2C_Result_t i2c_read (uint8_t register_address, uint8_t* data, uint16_t count)
 
 I2C_Result_t i2c_WriteMulti(uint16_t register_address, uint8_t *data, uint8_t size)
 {
-	/* Try to transmit via I2C */
-		if (HAL_I2C_Mem_Write(handleI2C2, DEFAULT_I2C_ADDR, register_address, register_address > 0xFF ? I2C_MEMADD_SIZE_16BIT : I2C_MEMADD_SIZE_8BIT, data, size, 1000) != HAL_OK) {
-			/* Check error */
-			if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
-			    Error_Handler(handleI2C2);
-			}
 
-			/* Return error */
-			return I2C_Result_Error;
-		}
+  HAL_StatusTypeDef status = HAL_OK;
+  if (HAL_I2C_Mem_Write_IT(handleI2C2, DEFAULT_I2C_ADDR, register_address, register_address > 0xFF ? I2C_MEMADD_SIZE_16BIT : I2C_MEMADD_SIZE_8BIT, data, size) != HAL_OK)
+    {
+      if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
+          Error_Handler(handleI2C2);
+      }
+      /* Return error */
+      return I2C_Result_Error;
+    }
+//	/* Try to transmit via I2C */
+//		if (HAL_I2C_Mem_Write(handleI2C2, DEFAULT_I2C_ADDR, register_address, register_address > 0xFF ? I2C_MEMADD_SIZE_16BIT : I2C_MEMADD_SIZE_8BIT, data, size, 1000) != HAL_OK) {
+//			/* Check error */
+//			if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
+//			    Error_Handler(handleI2C2);
+//			}
+//
+//			/* Return error */
+//			return I2C_Result_Error;
+//		}
 
 		/* Return OK */
 		return I2C_Result_Ok;

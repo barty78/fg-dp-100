@@ -259,10 +259,15 @@ uint8_t parseCommand(char* command)
      if (command[4] != SEPARATOR) return 1;
      dispdata data;
 //     uint32_t tmp = digitsToInt(command, 5, 6, 16);
+
      data.ledStateBuffer = digitsToInt(command, 5, 6, 16);
      data.group_pwm = digitsToInt(command, 12, 8, 16);
      data.group_iref = digitsToInt(command, 21, 8, 16);
+     //TODO - Remove, just for debugging
+//     HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
      updateDisplay(data);
+     //TODO - Remove, just for debugging
+     HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
    }
 
    sendAck();     // Must send ACK back to any LED packet.

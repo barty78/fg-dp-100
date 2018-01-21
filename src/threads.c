@@ -264,12 +264,16 @@ void readPacketThread(void const *argument)
   taskENTER_CRITICAL();
    if (rxMessageHead != rxMessageTail)
    {
-    if (rxBuffer[rxMessageTail] == SOF_RX) packetPointer = 0;
-
+    if (rxBuffer[rxMessageTail] == SOF_RX)
+      {
+        HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+        packetPointer = 0;
+      }
     packetBuffer[packetHead][packetPointer++] = rxBuffer[rxMessageTail];
     if (rxBuffer[rxMessageTail] == '\n')
     {
      packetPointer = 0;
+     HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
      flagPacketReceived = 1;
 
      if (++packetHead >= PACKET_BUFFER_LENGTH) packetHead = 0;
@@ -319,6 +323,7 @@ void parsePacketThread(void const *argument)
 
   if (received == 1)
     {
+      HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
       if (packetBuffer[packetTail][0] == SOF_RX)
         {
           taskENTER_CRITICAL();
@@ -525,7 +530,7 @@ void monitorThread(void const *argument)
   if (pushButtonsThread != prevButtons)
     {
       prevButtons = pushButtonsThread;
-      sprintf(response, "<,65,%02X,", (unsigned)pushButtonsThread);
+//      sprintf(response, "<,65,%02X,", (unsigned)pushButtonsThread);
       osMessagePut(buttonQID, (unsigned)pushButtonsThread, 10);
 //      sendResponse(response);
     }
