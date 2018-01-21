@@ -15,6 +15,13 @@
 #include "global.h"
 #include "comms.h"
 
+/* DMA Timeout event structure
+ * Note: prevCNDTR initial value must be set to maximum size of DMA buffer!
+*/
+DMA_Event_t dma_uart_rx = {0, 0, DMA_BUFFER_LENGTH};
+
+uint8_t data[DMA_BUFFER_LENGTH] = {'\0'};    /* Data buffer that contains newly received data */
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // HAL_UART_RxCpltCallback
@@ -33,19 +40,57 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
  UBaseType_t uxSavedInterruptStatus;
  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
-#ifdef RS485
-  if (UartHandle == handleLPUART1)
-#else
-  if (UartHandle == handleUART1)
-#endif
-  {
-	  if (++rxMessageHead >= RX_BUFFER_LENGTH) rxMessageHead = 0;
-#ifdef RS485
-   HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
-#else
-   HAL_UART_Receive_IT(handleUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
-#endif
-  }
+
+ uint16_t i, pos, start, length;
+    uint16_t currCNDTR = __HAL_DMA_GET_COUNTER(UartHandle->hdmarx);
+
+    /* Ignore IDLE Timeout when the received characters exactly filled up the DMA buffer and DMA Rx Complete IT is generated, but there is no new character during timeout */
+    if(dma_uart_rx.flag && currCNDTR == DMA_BUFFER_LENGTH)
+    {
+        dma_uart_rx.flag = 0;
+        return;
+    }
+
+    /* Determine start position in DMA buffer based on previous CNDTR value */
+    start = (dma_uart_rx.prevCNDTR < DMA_BUFFER_LENGTH) ? (DMA_BUFFER_LENGTH - dma_uart_rx.prevCNDTR) : 0;
+
+    if(dma_uart_rx.flag)    /* Timeout event */
+    {
+        /* Determine new data length based on previous DMA_CNDTR value:
+         *  If previous CNDTR is less than DMA buffer size: there is old data in DMA buffer (from previous timeout) that has to be ignored.
+         *  If CNDTR == DMA buffer size: entire buffer content is new and has to be processed.
+        */
+        length = (dma_uart_rx.prevCNDTR < DMA_BUFFER_LENGTH) ? (dma_uart_rx.prevCNDTR - currCNDTR) : (DMA_BUFFER_LENGTH - currCNDTR);
+        dma_uart_rx.prevCNDTR = currCNDTR;
+        dma_uart_rx.flag = 0;
+    }
+    else                /* DMA Rx Complete event */
+    {
+        length = DMA_BUFFER_LENGTH - start;
+        dma_uart_rx.prevCNDTR = DMA_BUFFER_LENGTH;
+    }
+
+    /* Copy and Process new data */
+    for(i=0,pos=start; i<length; ++i,++pos)
+    {
+        data[i] = dma_rx_buf[pos];
+    }
+
+
+//
+// #ifdef RS485
+//  if (UartHandle == handleLPUART1)
+//#else
+//  if (UartHandle == handleUART1)
+//#endif
+//  {
+//	  if (++rxMessageHead >= RX_BUFFER_LENGTH) rxMessageHead = 0;
+//#ifdef RS485
+//   HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
+//#else
+//   HAL_UART_Receive_IT(handleUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
+//#endif
+//  }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
 }
 
@@ -69,7 +114,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 
  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
 #ifdef RS485
-  if (UartHandle == handleLPUART1)
+  if (UartHandle == &handleLPUART1)
 #else
   if (UartHandle == handleUART1)
 #endif
@@ -77,7 +122,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 //   if (++txMessageTail >= TX_BUFFER_LENGTH) txMessageTail = 0;
       txMessageTail = txMessageHead;
    flagByteTransmitted = 1;  // Set transmission flag: transfer complete
-   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);
+   HAL_GPIO_TogglePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin);
 
   }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
@@ -151,9 +196,13 @@ uint8_t initComms()
   for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++) packetBuffer[i] = malloc(RX_BUFFER_LENGTH * sizeof(char));
 
  taskEXIT_CRITICAL();
-HAL_UART_Receive_DMA(handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
+HAL_UART_Receive_DMA(&handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
+
+/* Disable Half Transfer Interrupt */
+__HAL_DMA_DISABLE_IT(handleLPUART1->hdmarx, DMA_IT_HT);
+
 #ifdef RS485
- HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
+// HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
 #else
  HAL_UART_Receive_IT(handleUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
 #endif

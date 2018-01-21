@@ -60,8 +60,8 @@
 #define ADC_3V3_GPIO_Port GPIOA
 #define BUZZER_Pin GPIO_PIN_0
 #define BUZZER_GPIO_Port GPIOB
-#define RS485_EN_Pin GPIO_PIN_10
-#define RS485_EN_GPIO_Port GPIOB
+#define RS485_RXE_Pin GPIO_PIN_10
+#define RS485_RXE_GPIO_Port GPIOB
 #define RS485_TE_Pin GPIO_PIN_11
 #define RS485_TE_GPIO_Port GPIOB
 #define PCA_RST_Pin GPIO_PIN_8

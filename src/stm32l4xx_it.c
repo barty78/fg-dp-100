@@ -35,6 +35,7 @@
 #include "stm32l4xx.h"
 #include "stm32l4xx_it.h"
 #include "cmsis_os.h"
+#include "comms.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -43,6 +44,7 @@
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
 extern DMA_HandleTypeDef hdma_lpuart_rx;
+extern DMA_Event_t dma_uart_rx;
 
 extern UART_HandleTypeDef hlpuart1;
 extern UART_HandleTypeDef huart1;
@@ -155,6 +157,16 @@ void SysTick_Handler(void)
   osSystickHandler();
   /* USER CODE BEGIN SysTick_IRQn 1 */
 
+  /* DMA Timer */
+  if (dma_uart_rx.timer == 1)
+    {
+      dma_uart_rx.flag = 1;
+      hdma_lpuart_rx.XferCpltCallback(&hdma_lpuart_rx);
+    }
+
+  /* DMA Timeout event: set Timeout Flag and call DMA Rx Complete Callback */
+  if (dma_uart_rx.timer) { --dma_uart_rx.timer;}
+
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -258,7 +270,13 @@ void DMA2_Channel7_IRQHandler(void)
 void LPUART1_IRQHandler(void)
 {
   /* USER CODE BEGIN LPUART1_IRQn 0 */
-
+  /* UART IDLE Interrupt */
+      if((USART2->ISR & USART_ISR_IDLE) != RESET)
+      {
+          USART2->ICR = UART_CLEAR_IDLEF;
+          /* Start DMA timer */
+          dma_uart_rx.timer = DMA_TIMEOUT_MS;
+      }
   /* USER CODE END LPUART1_IRQn 0 */
   HAL_UART_IRQHandler(&hlpuart1);
   /* USER CODE BEGIN LPUART1_IRQn 1 */

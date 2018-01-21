@@ -137,9 +137,10 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   //MX_ADC1_Init();
-  MX_DMA_Init();
+
   MX_I2C2_Init();
   MX_LPUART1_UART_Init();
+  MX_DMA_Init();
 //  MX_USART1_UART_Init();
   //MX_RNG_Init();
   //MX_IWDG_Init();
@@ -523,13 +524,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, BUZZER_Pin|RS485_TE_Pin|RS485_EN_Pin|PCA_RST_Pin
+  HAL_GPIO_WritePin(GPIOB, BUZZER_Pin|RS485_TE_Pin|RS485_RXE_Pin|PCA_RST_Pin
                           |PCA_OE_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(GPIOB, RS485_TE_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : BUZZER_Pin RS485_EN_Pin RS485_TE_Pin PCA_RST_Pin 
                            PCA_OE_Pin */
-  GPIO_InitStruct.Pin = BUZZER_Pin|RS485_TE_Pin|RS485_EN_Pin|PCA_RST_Pin
+  GPIO_InitStruct.Pin = BUZZER_Pin|RS485_TE_Pin|RS485_RXE_Pin|PCA_RST_Pin
                           |PCA_OE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;

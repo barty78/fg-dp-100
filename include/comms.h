@@ -10,6 +10,15 @@
 #define PACKET_BUFFER_LENGTH 32
 #define RESPONSE_BUFFER_LENGTH 256
 
+#define DMA_TIMEOUT_MS  10
+
+typedef struct
+{
+    volatile uint8_t  flag;     /* Timeout event flag */
+    uint16_t timer;             /* Timeout duration in msec */
+    uint16_t prevCNDTR;         /* Holds previous value of DMA_CNDTR */
+} DMA_Event_t;
+
 UART_HandleTypeDef *handleUART1, *handleLPUART1;
 uint8_t flagByteTransmitted;
 uint8_t flagPacketSent;
