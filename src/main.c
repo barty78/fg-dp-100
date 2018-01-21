@@ -140,7 +140,7 @@ int main(void)
 
   MX_I2C2_Init();
   MX_LPUART1_UART_Init();
-  MX_DMA_Init();
+//  MX_DMA_Init();
 //  MX_USART1_UART_Init();
   //MX_RNG_Init();
   //MX_IWDG_Init();
