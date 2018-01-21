@@ -411,6 +411,9 @@ static void MX_LPUART1_UART_Init(void)
 	  Error_Handler();
   }
 
+  /* UART2 IDLE Interrupt Configuration */
+//  SET_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
+
 }
 
 /* USART1 init function */
