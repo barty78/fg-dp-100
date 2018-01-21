@@ -4,6 +4,7 @@
 #include "stm32l4xx_hal.h"
 #include "cmsis_os.h"
 
+#define DMA_BUFFER_LENGTH 256
 #define RX_BUFFER_LENGTH 256
 #define TX_BUFFER_LENGTH 512
 #define PACKET_BUFFER_LENGTH 32
@@ -13,6 +14,7 @@ UART_HandleTypeDef *handleUART1, *handleLPUART1;
 uint8_t flagByteTransmitted;
 uint8_t flagPacketSent;
 char lastMsg[RESPONSE_BUFFER_LENGTH];
+char dma_rx_buf[DMA_BUFFER_LENGTH];
 char rxBuffer[RX_BUFFER_LENGTH], txBuffer[TX_BUFFER_LENGTH];
 char* packetBuffer[PACKET_BUFFER_LENGTH];
 

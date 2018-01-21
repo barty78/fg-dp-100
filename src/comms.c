@@ -151,6 +151,7 @@ uint8_t initComms()
   for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++) packetBuffer[i] = malloc(RX_BUFFER_LENGTH * sizeof(char));
 
  taskEXIT_CRITICAL();
+HAL_UART_Receive_DMA(handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
 #ifdef RS485
  HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
 #else

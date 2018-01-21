@@ -42,6 +42,8 @@
 
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
+extern DMA_HandleTypeDef hdma_lpuart_rx;
+
 extern UART_HandleTypeDef hlpuart1;
 extern UART_HandleTypeDef huart1;
 extern I2C_HandleTypeDef hi2c2;
@@ -234,6 +236,21 @@ void USART1_IRQHandler(void)
 
   /* USER CODE END USART1_IRQn 1 */
 }
+
+/**
+* @brief This function handles DMA2 channel7 global interrupt.
+*/
+void DMA2_Channel7_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Channel7_IRQn 0 */
+
+  /* USER CODE END DMA2_Channel7_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_lpuart_rx);
+  /* USER CODE BEGIN DMA2_Channel7_IRQn 1 */
+
+  /* USER CODE END DMA2_Channel7_IRQn 1 */
+}
+
 
 /**
 * @brief This function handles LPUART1 global interrupt.

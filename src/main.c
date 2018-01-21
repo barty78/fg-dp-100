@@ -67,6 +67,8 @@ I2C_HandleTypeDef hi2c2;
 
 IWDG_HandleTypeDef hiwdg;
 
+DMA_HandleTypeDef hdma_lpuart_rx;
+
 UART_HandleTypeDef hlpuart1;
 UART_HandleTypeDef huart1;
 
@@ -95,6 +97,7 @@ static void MX_IWDG_Init(void);
 static void MX_CRC_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_RTC_Init(void);
+static void MX_DMA_Init(void);
 
 void StartDefaultTask(void const * argument);
 
@@ -134,6 +137,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   //MX_ADC1_Init();
+  MX_DMA_Init();
   MX_I2C2_Init();
   MX_LPUART1_UART_Init();
 //  MX_USART1_UART_Init();
@@ -142,6 +146,7 @@ int main(void)
   //MX_CRC_Init();
   //MX_TIM6_Init();
   //MX_RTC_Init();
+
 
   handleUART1 = &huart1;
   handleLPUART1 = &hlpuart1;
@@ -439,6 +444,20 @@ static void MX_RNG_Init(void)
   }
 
 }
+
+/* DMA init function */
+static void MX_DMA_Init(void)
+{
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+    /* DMA2_Stream0_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
+
+
+}
+
 
 /* RTC init function */
 static void MX_RTC_Init(void)
