@@ -48,8 +48,10 @@
   */
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
+#include "comms.h"
 
 extern DMA_HandleTypeDef hdma_lpuart_rx;
+extern DMA_HandleTypeDef hdma_lpuart_tx;
 
 extern void _Error_Handler(void);
 /* USER CODE BEGIN 0 */
@@ -250,7 +252,11 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
 void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 {
 
+//  static DMA_HandleTypeDef hdma_rx;
+//  static DMA_HandleTypeDef hdma_tx;
+
   GPIO_InitTypeDef GPIO_InitStruct;
+
   if(huart->Instance==LPUART1)
   {
   /* USER CODE BEGIN LPUART1_MspInit 0 */
@@ -279,8 +285,24 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     /* LPUART1 DMA Init */
+    /* LPUART_TX Init */
+    hdma_lpuart_tx.Instance = USARTx_TX_DMA_CHANNEL;
+    hdma_lpuart_tx.Init.Request = DMA_REQUEST_4;
+    hdma_lpuart_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_lpuart_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_lpuart_tx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_lpuart_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_lpuart_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_lpuart_tx.Init.Mode = DMA_NORMAL;
+    hdma_lpuart_tx.Init.Priority = DMA_PRIORITY_LOW;
+    if (HAL_DMA_Init(&hdma_lpuart_tx) != HAL_OK)
+      {
+//        _Error_Handler(__FILE__, __LINE__);
+      }
+    __HAL_LINKDMA(huart,hdmatx,hdma_lpuart_tx);
+
     /* LPUART_RX Init */
-    hdma_lpuart_rx.Instance = DMA2_Channel7;
+    hdma_lpuart_rx.Instance = USARTx_RX_DMA_CHANNEL;
     hdma_lpuart_rx.Init.Request = DMA_REQUEST_4;
     hdma_lpuart_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
     hdma_lpuart_rx.Init.PeriphInc = DMA_PINC_DISABLE;
@@ -288,7 +310,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     hdma_lpuart_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_lpuart_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_lpuart_rx.Init.Mode = DMA_CIRCULAR;
-    hdma_lpuart_rx.Init.Priority = DMA_PRIORITY_VERY_HIGH;
+    hdma_lpuart_rx.Init.Priority = DMA_PRIORITY_LOW;
     if (HAL_DMA_Init(&hdma_lpuart_rx) != HAL_OK)
     {
 //      _Error_Handler();
@@ -296,15 +318,18 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     __HAL_LINKDMA(huart,hdmarx,hdma_lpuart_rx);
 
-    HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
+//    HAL_NVIC_SetPriority(USARTx_DMA_TX_IRQn, 0, 1);
+//    HAL_NVIC_EnableIRQ(USARTx_DMA_TX_IRQn);
+//
+//    HAL_NVIC_SetPriority(USARTx_DMA_RX_IRQn, 0, 0);
+//    HAL_NVIC_EnableIRQ(USARTx_DMA_RX_IRQn);
 
 //
 //    /* LPUART1 interrupt Init */
-    SET_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
+//    SET_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
 
-    HAL_NVIC_SetPriority(LPUART1_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(LPUART1_IRQn);
+//    HAL_NVIC_SetPriority(LPUART1_IRQn, 5, 0);
+//    HAL_NVIC_EnableIRQ(LPUART1_IRQn);
   /* USER CODE BEGIN LPUART1_MspInit 1 */
 
   /* USER CODE END LPUART1_MspInit 1 */
@@ -340,6 +365,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
 void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 {
+  static DMA_HandleTypeDef hdma_rx;
+  static DMA_HandleTypeDef hdma_tx;
 
   if(huart->Instance==LPUART1)
   {
@@ -359,7 +386,11 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_1);
 
     /* LPUART1 DMA DeInit */
-    HAL_DMA_DeInit(huart->hdmarx);
+    HAL_DMA_DeInit(&hdma_rx);
+    HAL_DMA_DeInit(&hdma_tx);
+
+    HAL_NVIC_DisableIRQ(DMA2_Channel6_IRQn);
+    HAL_NVIC_DisableIRQ(DMA2_Channel7_IRQn);
 
     /* LPUART1 interrupt DeInit */
     HAL_NVIC_DisableIRQ(LPUART1_IRQn);

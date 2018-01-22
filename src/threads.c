@@ -207,12 +207,18 @@ void writeMessageThread(void const *argument)
            //		   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);							// Enable Transciever
            HAL_GPIO_TogglePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin);                // Disable RX
 
+//           HAL_UART_Transmit_DMA(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), txMessageHead - txMessageTail);
+//           HAL_UART_Transmit_DMA(handleLPUART1, (uint8_t*)txBuffer, 30);
+
 #ifndef TEST
            if (txMessageHead <= 0)
              {
-               HAL_UART_Transmit_IT(&handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), (TX_BUFFER_LENGTH - txMessageTail) + txMessageHead);  // Send Message
+               //               HAL_UART_Transmit_IT(&handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), (TX_BUFFER_LENGTH - txMessageTail) + txMessageHead);  // Send Message
+               HAL_UART_Transmit_DMA(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), (TX_BUFFER_LENGTH - txMessageTail) + txMessageHead);  // Send Message
+
              } else {
-                 HAL_UART_Transmit_IT(&handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), txMessageHead - txMessageTail);  // Send Message
+                 //                 HAL_UART_Transmit_IT(&handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), txMessageHead - txMessageTail);  // Send Message
+                 HAL_UART_Transmit_DMA(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), txMessageHead - txMessageTail);  // Send Message
              }
 #else
            HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);  // Send Message

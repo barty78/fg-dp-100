@@ -1,0 +1,582 @@
+diff --git a/include/comms.h b/include/comms.h
+index 4a8b5d9..959e637 100644
+--- a/include/comms.h
++++ b/include/comms.h
+@@ -4,15 +4,26 @@
+ #include "stm32l4xx_hal.h"
+ #include "cmsis_os.h"
+ 
++#define DMA_BUFFER_LENGTH 256
+ #define RX_BUFFER_LENGTH 256
+ #define TX_BUFFER_LENGTH 512
+ #define PACKET_BUFFER_LENGTH 32
+ #define RESPONSE_BUFFER_LENGTH 256
+ 
++#define DMA_TIMEOUT_MS  10
++
++typedef struct
++{
++    volatile uint8_t  flag;     /* Timeout event flag */
++    uint16_t timer;             /* Timeout duration in msec */
++    uint16_t prevCNDTR;         /* Holds previous value of DMA_CNDTR */
++} DMA_Event_t;
++
+ UART_HandleTypeDef *handleUART1, *handleLPUART1;
+ uint8_t flagByteTransmitted;
+ uint8_t flagPacketSent;
+ char lastMsg[RESPONSE_BUFFER_LENGTH];
++char dma_rx_buf[DMA_BUFFER_LENGTH];
+ char rxBuffer[RX_BUFFER_LENGTH], txBuffer[TX_BUFFER_LENGTH];
+ char* packetBuffer[PACKET_BUFFER_LENGTH];
+ 
+diff --git a/include/i2c.h b/include/i2c.h
+index a5aa404..e2ae438 100644
+--- a/include/i2c.h
++++ b/include/i2c.h
+@@ -36,6 +36,7 @@ char aRxBuffer[RXBUFFERSIZE];
+ 
+ I2C_HandleTypeDef *handleI2C2;
+ int flagI2CByteTransmitted;
++uint8_t flagI2CByteSent;
+ 
+ I2C_Result_t i2c_read(uint8_t register_adddress, uint8_t *data, uint16_t count);
+ I2C_Result_t i2c_byte_read(uint8_t register_address, uint8_t data);
+diff --git a/include/main.h b/include/main.h
+index bc96e44..fd15f54 100644
+--- a/include/main.h
++++ b/include/main.h
+@@ -60,8 +60,8 @@
+ #define ADC_3V3_GPIO_Port GPIOA
+ #define BUZZER_Pin GPIO_PIN_0
+ #define BUZZER_GPIO_Port GPIOB
+-#define RS485_EN_Pin GPIO_PIN_10
+-#define RS485_EN_GPIO_Port GPIOB
++#define RS485_RXE_Pin GPIO_PIN_10
++#define RS485_RXE_GPIO_Port GPIOB
+ #define RS485_TE_Pin GPIO_PIN_11
+ #define RS485_TE_GPIO_Port GPIOB
+ #define PCA_RST_Pin GPIO_PIN_8
+diff --git a/include/stm32l4xx_it.h b/include/stm32l4xx_it.h
+index 40e8c59..b1f2936 100644
+--- a/include/stm32l4xx_it.h
++++ b/include/stm32l4xx_it.h
+@@ -57,6 +57,7 @@ void TIM1_UP_TIM16_IRQHandler(void);
+ void USART1_IRQHandler(void);
+ void LPUART1_IRQHandler(void);
+ void I2C2_IRQHandler(void);
++void DMA2_Channel7_IRQHandler(void);
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/src/comms.c b/src/comms.c
+index bf4c3ee..a2f6b09 100644
+--- a/src/comms.c
++++ b/src/comms.c
+@@ -15,6 +15,13 @@
+ #include "global.h"
+ #include "comms.h"
+ 
++/* DMA Timeout event structure
++ * Note: prevCNDTR initial value must be set to maximum size of DMA buffer!
++*/
++DMA_Event_t dma_uart_rx = {0, 0, DMA_BUFFER_LENGTH};
++
++uint8_t data[DMA_BUFFER_LENGTH] = {'\0'};    /* Data buffer that contains newly received data */
++
+ ///////////////////////////////////////////////////////////////////////////////
+ //
+ // HAL_UART_RxCpltCallback
+@@ -33,19 +40,57 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
+ {
+  UBaseType_t uxSavedInterruptStatus;
+  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
+-#ifdef RS485
+-  if (UartHandle == handleLPUART1)
+-#else
+-  if (UartHandle == handleUART1)
+-#endif
+-  {
+-	  if (++rxMessageHead >= RX_BUFFER_LENGTH) rxMessageHead = 0;
+-#ifdef RS485
+-   HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
+-#else
+-   HAL_UART_Receive_IT(handleUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
+-#endif
+-  }
++
++ uint16_t i, pos, start, length;
++    uint16_t currCNDTR = __HAL_DMA_GET_COUNTER(UartHandle->hdmarx);
++
++    /* Ignore IDLE Timeout when the received characters exactly filled up the DMA buffer and DMA Rx Complete IT is generated, but there is no new character during timeout */
++    if(dma_uart_rx.flag && currCNDTR == DMA_BUFFER_LENGTH)
++    {
++        dma_uart_rx.flag = 0;
++        return;
++    }
++
++    /* Determine start position in DMA buffer based on previous CNDTR value */
++    start = (dma_uart_rx.prevCNDTR < DMA_BUFFER_LENGTH) ? (DMA_BUFFER_LENGTH - dma_uart_rx.prevCNDTR) : 0;
++
++    if(dma_uart_rx.flag)    /* Timeout event */
++    {
++        /* Determine new data length based on previous DMA_CNDTR value:
++         *  If previous CNDTR is less than DMA buffer size: there is old data in DMA buffer (from previous timeout) that has to be ignored.
++         *  If CNDTR == DMA buffer size: entire buffer content is new and has to be processed.
++        */
++        length = (dma_uart_rx.prevCNDTR < DMA_BUFFER_LENGTH) ? (dma_uart_rx.prevCNDTR - currCNDTR) : (DMA_BUFFER_LENGTH - currCNDTR);
++        dma_uart_rx.prevCNDTR = currCNDTR;
++        dma_uart_rx.flag = 0;
++    }
++    else                /* DMA Rx Complete event */
++    {
++        length = DMA_BUFFER_LENGTH - start;
++        dma_uart_rx.prevCNDTR = DMA_BUFFER_LENGTH;
++    }
++
++    /* Copy and Process new data */
++    for(i=0,pos=start; i<length; ++i,++pos)
++    {
++        data[i] = dma_rx_buf[pos];
++    }
++
++
++//
++// #ifdef RS485
++//  if (UartHandle == handleLPUART1)
++//#else
++//  if (UartHandle == handleUART1)
++//#endif
++//  {
++//	  if (++rxMessageHead >= RX_BUFFER_LENGTH) rxMessageHead = 0;
++//#ifdef RS485
++//   HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
++//#else
++//   HAL_UART_Receive_IT(handleUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
++//#endif
++//  }
+  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
+ }
+ 
+@@ -69,7 +114,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
+ 
+  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
+ #ifdef RS485
+-  if (UartHandle == handleLPUART1)
++  if (UartHandle == &handleLPUART1)
+ #else
+   if (UartHandle == handleUART1)
+ #endif
+@@ -77,7 +122,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
+ //   if (++txMessageTail >= TX_BUFFER_LENGTH) txMessageTail = 0;
+       txMessageTail = txMessageHead;
+    flagByteTransmitted = 1;  // Set transmission flag: transfer complete
+-   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);
++   HAL_GPIO_TogglePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin);
+ 
+   }
+  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
+@@ -151,8 +196,13 @@ uint8_t initComms()
+   for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++) packetBuffer[i] = malloc(RX_BUFFER_LENGTH * sizeof(char));
+ 
+  taskEXIT_CRITICAL();
++//HAL_UART_Receive_DMA(&handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
++
++/* Disable Half Transfer Interrupt */
++__HAL_DMA_DISABLE_IT(handleLPUART1->hdmarx, DMA_IT_HT);
++
+ #ifdef RS485
+- HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
++// HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
+ #else
+  HAL_UART_Receive_IT(handleUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
+ #endif
+diff --git a/src/i2c.c b/src/i2c.c
+index 57d257c..612ce92 100644
+--- a/src/i2c.c
++++ b/src/i2c.c
+@@ -73,6 +73,8 @@ void HAL_I2C_MemTxCpltCallback (I2C_HandleTypeDef *I2CHandle)
+   uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
+    if (I2CHandle == handleI2C2)
+    {
++
++       flagI2CByteSent = 1;
+    }
+   taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
+ }
+@@ -154,16 +156,26 @@ I2C_Result_t i2c_read (uint8_t register_address, uint8_t* data, uint16_t count)
+ 
+ I2C_Result_t i2c_WriteMulti(uint16_t register_address, uint8_t *data, uint8_t size)
+ {
+-	/* Try to transmit via I2C */
+-		if (HAL_I2C_Mem_Write(handleI2C2, DEFAULT_I2C_ADDR, register_address, register_address > 0xFF ? I2C_MEMADD_SIZE_16BIT : I2C_MEMADD_SIZE_8BIT, data, size, 1000) != HAL_OK) {
+-			/* Check error */
+-			if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
+-			    Error_Handler(handleI2C2);
+-			}
+ 
+-			/* Return error */
+-			return I2C_Result_Error;
+-		}
++  HAL_StatusTypeDef status = HAL_OK;
++  if (HAL_I2C_Mem_Write_IT(handleI2C2, DEFAULT_I2C_ADDR, register_address, register_address > 0xFF ? I2C_MEMADD_SIZE_16BIT : I2C_MEMADD_SIZE_8BIT, data, size) != HAL_OK)
++    {
++      if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
++          Error_Handler(handleI2C2);
++      }
++      /* Return error */
++      return I2C_Result_Error;
++    }
++//	/* Try to transmit via I2C */
++//		if (HAL_I2C_Mem_Write(handleI2C2, DEFAULT_I2C_ADDR, register_address, register_address > 0xFF ? I2C_MEMADD_SIZE_16BIT : I2C_MEMADD_SIZE_8BIT, data, size, 1000) != HAL_OK) {
++//			/* Check error */
++//			if (HAL_I2C_GetError(handleI2C2) != HAL_I2C_ERROR_AF) {
++//			    Error_Handler(handleI2C2);
++//			}
++//
++//			/* Return error */
++//			return I2C_Result_Error;
++//		}
+ 
+ 		/* Return OK */
+ 		return I2C_Result_Ok;
+diff --git a/src/main.c b/src/main.c
+index 81ff9b3..0ecf945 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -67,6 +67,8 @@ I2C_HandleTypeDef hi2c2;
+ 
+ IWDG_HandleTypeDef hiwdg;
+ 
++DMA_HandleTypeDef hdma_lpuart_rx;
++
+ UART_HandleTypeDef hlpuart1;
+ UART_HandleTypeDef huart1;
+ 
+@@ -95,6 +97,7 @@ static void MX_IWDG_Init(void);
+ static void MX_CRC_Init(void);
+ static void MX_TIM6_Init(void);
+ static void MX_RTC_Init(void);
++static void MX_DMA_Init(void);
+ 
+ void StartDefaultTask(void const * argument);
+ 
+@@ -134,8 +137,10 @@ int main(void)
+   /* Initialize all configured peripherals */
+   MX_GPIO_Init();
+   //MX_ADC1_Init();
++
+   MX_I2C2_Init();
+   MX_LPUART1_UART_Init();
++//  MX_DMA_Init();
+ //  MX_USART1_UART_Init();
+   //MX_RNG_Init();
+   //MX_IWDG_Init();
+@@ -143,6 +148,7 @@ int main(void)
+   //MX_TIM6_Init();
+   //MX_RTC_Init();
+ 
++
+   handleUART1 = &huart1;
+   handleLPUART1 = &hlpuart1;
+   handleI2C2 = &hi2c2;
+@@ -405,6 +411,9 @@ static void MX_LPUART1_UART_Init(void)
+ 	  Error_Handler();
+   }
+ 
++  /* UART2 IDLE Interrupt Configuration */
++//  SET_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
++
+ }
+ 
+ /* USART1 init function */
+@@ -440,6 +449,20 @@ static void MX_RNG_Init(void)
+ 
+ }
+ 
++/* DMA init function */
++static void MX_DMA_Init(void)
++{
++  __HAL_RCC_DMA2_CLK_ENABLE();
++
++  /* DMA interrupt init */
++    /* DMA2_Stream0_IRQn interrupt configuration */
++    HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 5, 0);
++    HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
++
++
++}
++
++
+ /* RTC init function */
+ static void MX_RTC_Init(void)
+ {
+@@ -504,13 +527,13 @@ static void MX_GPIO_Init(void)
+   __HAL_RCC_GPIOB_CLK_ENABLE();
+ 
+   /*Configure GPIO pin Output Level */
+-  HAL_GPIO_WritePin(GPIOB, BUZZER_Pin|RS485_TE_Pin|RS485_EN_Pin|PCA_RST_Pin
++  HAL_GPIO_WritePin(GPIOB, BUZZER_Pin|RS485_TE_Pin|RS485_RXE_Pin|PCA_RST_Pin
+                           |PCA_OE_Pin, GPIO_PIN_RESET);
+   HAL_GPIO_WritePin(GPIOB, RS485_TE_Pin, GPIO_PIN_SET);
+ 
+   /*Configure GPIO pins : BUZZER_Pin RS485_EN_Pin RS485_TE_Pin PCA_RST_Pin 
+                            PCA_OE_Pin */
+-  GPIO_InitStruct.Pin = BUZZER_Pin|RS485_TE_Pin|RS485_EN_Pin|PCA_RST_Pin
++  GPIO_InitStruct.Pin = BUZZER_Pin|RS485_TE_Pin|RS485_RXE_Pin|PCA_RST_Pin
+                           |PCA_OE_Pin;
+   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+   GPIO_InitStruct.Pull = GPIO_NOPULL;
+diff --git a/src/parse.c b/src/parse.c
+index 0befc6b..750b071 100644
+--- a/src/parse.c
++++ b/src/parse.c
+@@ -259,10 +259,15 @@ uint8_t parseCommand(char* command)
+      if (command[4] != SEPARATOR) return 1;
+      dispdata data;
+ //     uint32_t tmp = digitsToInt(command, 5, 6, 16);
++
+      data.ledStateBuffer = digitsToInt(command, 5, 6, 16);
+      data.group_pwm = digitsToInt(command, 12, 8, 16);
+      data.group_iref = digitsToInt(command, 21, 8, 16);
++     //TODO - Remove, just for debugging
++//     HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+      updateDisplay(data);
++     //TODO - Remove, just for debugging
++     HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+    }
+ 
+    sendAck();     // Must send ACK back to any LED packet.
+diff --git a/src/pca9956b.c b/src/pca9956b.c
+index 40786e9..843890a 100644
+--- a/src/pca9956b.c
++++ b/src/pca9956b.c
+@@ -28,6 +28,8 @@
+  */
+ void pca9956_init(void)
+ {
++    flagI2CByteSent = 1;
++
+     colour_pwm[RED] = 0xFF;
+     colour_pwm[AMBER] = 0x7F;
+     colour_pwm[GREEN] = 0x01;
+diff --git a/src/stm32l4xx_hal_msp.c b/src/stm32l4xx_hal_msp.c
+index 702891c..ae1b27a 100644
+--- a/src/stm32l4xx_hal_msp.c
++++ b/src/stm32l4xx_hal_msp.c
+@@ -49,7 +49,9 @@
+ /* Includes ------------------------------------------------------------------*/
+ #include "stm32l4xx_hal.h"
+ 
+-extern void Error_Handler(void);
++extern DMA_HandleTypeDef hdma_lpuart_rx;
++
++extern void _Error_Handler(void);
+ /* USER CODE BEGIN 0 */
+ 
+ /* USER CODE END 0 */
+@@ -276,7 +278,31 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
+     GPIO_InitStruct.Alternate = GPIO_AF8_LPUART1;
+     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+ 
+-    /* LPUART1 interrupt Init */
++    /* LPUART1 DMA Init */
++    /* LPUART_RX Init */
++    hdma_lpuart_rx.Instance = DMA2_Channel7;
++    hdma_lpuart_rx.Init.Request = DMA_REQUEST_4;
++    hdma_lpuart_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
++    hdma_lpuart_rx.Init.PeriphInc = DMA_PINC_DISABLE;
++    hdma_lpuart_rx.Init.MemInc = DMA_MINC_ENABLE;
++    hdma_lpuart_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
++    hdma_lpuart_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
++    hdma_lpuart_rx.Init.Mode = DMA_CIRCULAR;
++    hdma_lpuart_rx.Init.Priority = DMA_PRIORITY_VERY_HIGH;
++    if (HAL_DMA_Init(&hdma_lpuart_rx) != HAL_OK)
++    {
++//      _Error_Handler();
++    }
++
++    __HAL_LINKDMA(huart,hdmarx,hdma_lpuart_rx);
++
++    HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
++    HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
++
++//
++//    /* LPUART1 interrupt Init */
++    SET_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
++
+     HAL_NVIC_SetPriority(LPUART1_IRQn, 5, 0);
+     HAL_NVIC_EnableIRQ(LPUART1_IRQn);
+   /* USER CODE BEGIN LPUART1_MspInit 1 */
+@@ -332,6 +358,9 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
+ 
+     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_1);
+ 
++    /* LPUART1 DMA DeInit */
++    HAL_DMA_DeInit(huart->hdmarx);
++
+     /* LPUART1 interrupt DeInit */
+     HAL_NVIC_DisableIRQ(LPUART1_IRQn);
+ 
+diff --git a/src/stm32l4xx_it.c b/src/stm32l4xx_it.c
+index 4044906..52dceab 100644
+--- a/src/stm32l4xx_it.c
++++ b/src/stm32l4xx_it.c
+@@ -35,6 +35,7 @@
+ #include "stm32l4xx.h"
+ #include "stm32l4xx_it.h"
+ #include "cmsis_os.h"
++#include "comms.h"
+ 
+ /* USER CODE BEGIN 0 */
+ 
+@@ -42,6 +43,9 @@
+ 
+ /* External variables --------------------------------------------------------*/
+ extern ADC_HandleTypeDef hadc1;
++extern DMA_HandleTypeDef hdma_lpuart_rx;
++extern DMA_Event_t dma_uart_rx;
++
+ extern UART_HandleTypeDef hlpuart1;
+ extern UART_HandleTypeDef huart1;
+ extern I2C_HandleTypeDef hi2c2;
+@@ -153,6 +157,16 @@ void SysTick_Handler(void)
+   osSystickHandler();
+   /* USER CODE BEGIN SysTick_IRQn 1 */
+ 
++  /* DMA Timer */
++  if (dma_uart_rx.timer == 1)
++    {
++      dma_uart_rx.flag = 1;
++      hdma_lpuart_rx.XferCpltCallback(&hdma_lpuart_rx);
++    }
++
++  /* DMA Timeout event: set Timeout Flag and call DMA Rx Complete Callback */
++  if (dma_uart_rx.timer) { --dma_uart_rx.timer;}
++
+   /* USER CODE END SysTick_IRQn 1 */
+ }
+ 
+@@ -236,12 +250,33 @@ void USART1_IRQHandler(void)
+ }
+ 
+ /**
++* @brief This function handles DMA2 channel7 global interrupt.
++*/
++void DMA2_Channel7_IRQHandler(void)
++{
++  /* USER CODE BEGIN DMA2_Channel7_IRQn 0 */
++
++  /* USER CODE END DMA2_Channel7_IRQn 0 */
++  HAL_DMA_IRQHandler(&hdma_lpuart_rx);
++  /* USER CODE BEGIN DMA2_Channel7_IRQn 1 */
++
++  /* USER CODE END DMA2_Channel7_IRQn 1 */
++}
++
++
++/**
+ * @brief This function handles LPUART1 global interrupt.
+ */
+ void LPUART1_IRQHandler(void)
+ {
+   /* USER CODE BEGIN LPUART1_IRQn 0 */
+-
++  /* UART IDLE Interrupt */
++      if((USART2->ISR & USART_ISR_IDLE) != RESET)
++      {
++          USART2->ICR = UART_CLEAR_IDLEF;
++          /* Start DMA timer */
++          dma_uart_rx.timer = DMA_TIMEOUT_MS;
++      }
+   /* USER CODE END LPUART1_IRQn 0 */
+   HAL_UART_IRQHandler(&hlpuart1);
+   /* USER CODE BEGIN LPUART1_IRQn 1 */
+diff --git a/src/threads.c b/src/threads.c
+index 48566d5..c4b3d6a 100644
+--- a/src/threads.c
++++ b/src/threads.c
+@@ -199,32 +199,31 @@ void writeMessageThread(void const *argument)
+    taskENTER_CRITICAL();
+ 
+    if (flagByteTransmitted == 1)
+-   {
+-	   if (txMessageHead != txMessageTail)  // Data remaining in Transmit Buffer
+-	   {
+-		   flagByteTransmitted = 0;
++     {
++       if (txMessageHead != txMessageTail)  // Data remaining in Transmit Buffer
++         {
++           flagByteTransmitted = 0;
+ #ifdef RS485
+-//		   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);							// Enable Transciever
+-		   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);                // Disable RX
++           //		   HAL_GPIO_TogglePin(RS485_EN_GPIO_Port, RS485_EN_Pin);							// Enable Transciever
++           HAL_GPIO_TogglePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin);                // Disable RX
+ 
+ #ifndef TEST
+-		   if (txMessageHead <= 0)
+-		     {
+-		       HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), (TX_BUFFER_LENGTH - txMessageTail) + txMessageHead);  // Send Message
+-		     } else {
+-		         HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), txMessageHead - txMessageTail);  // Send Message
+-
+-		     }
++           if (txMessageHead <= 0)
++             {
++               HAL_UART_Transmit_IT(&handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), (TX_BUFFER_LENGTH - txMessageTail) + txMessageHead);  // Send Message
++             } else {
++                 HAL_UART_Transmit_IT(&handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), txMessageHead - txMessageTail);  // Send Message
++             }
+ #else
+-       HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);  // Send Message
++           HAL_UART_Transmit_IT(handleLPUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);  // Send Message
+ 
+ #endif
+ 
+ #else
+-		   HAL_UART_Transmit_IT(handleUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);
++           HAL_UART_Transmit_IT(handleUART1, (uint8_t*)(&(txBuffer[txMessageTail])), 1);
+ #endif
+-	   }
+-   }
++         }
++     }
+ 
+    taskEXIT_CRITICAL();
+ 
+@@ -264,12 +263,16 @@ void readPacketThread(void const *argument)
+   taskENTER_CRITICAL();
+    if (rxMessageHead != rxMessageTail)
+    {
+-    if (rxBuffer[rxMessageTail] == SOF_RX) packetPointer = 0;
+-
++    if (rxBuffer[rxMessageTail] == SOF_RX)
++      {
++        HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
++        packetPointer = 0;
++      }
+     packetBuffer[packetHead][packetPointer++] = rxBuffer[rxMessageTail];
+     if (rxBuffer[rxMessageTail] == '\n')
+     {
+      packetPointer = 0;
++     HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+      flagPacketReceived = 1;
+ 
+      if (++packetHead >= PACKET_BUFFER_LENGTH) packetHead = 0;
+@@ -319,6 +322,7 @@ void parsePacketThread(void const *argument)
+ 
+   if (received == 1)
+     {
++      HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+       if (packetBuffer[packetTail][0] == SOF_RX)
+         {
+           taskENTER_CRITICAL();
+@@ -525,7 +529,7 @@ void monitorThread(void const *argument)
+   if (pushButtonsThread != prevButtons)
+     {
+       prevButtons = pushButtonsThread;
+-      sprintf(response, "<,65,%02X,", (unsigned)pushButtonsThread);
++//      sprintf(response, "<,65,%02X,", (unsigned)pushButtonsThread);
+       osMessagePut(buttonQID, (unsigned)pushButtonsThread, 10);
+ //      sendResponse(response);
+     }

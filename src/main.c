@@ -68,6 +68,7 @@ I2C_HandleTypeDef hi2c2;
 IWDG_HandleTypeDef hiwdg;
 
 DMA_HandleTypeDef hdma_lpuart_rx;
+DMA_HandleTypeDef hdma_lpuart_tx;
 
 UART_HandleTypeDef hlpuart1;
 UART_HandleTypeDef huart1;
@@ -115,6 +116,10 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
+  handleUART1 = &huart1;
+  handleLPUART1 = &hlpuart1;
+  handleI2C2 = &hi2c2;
+
   /* USER CODE END 1 */
 //  JumpToBootloader();
 
@@ -136,12 +141,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   //MX_ADC1_Init();
-
   MX_I2C2_Init();
   MX_LPUART1_UART_Init();
-//  MX_DMA_Init();
-//  MX_USART1_UART_Init();
+  //MX_USART1_UART_Init();
   //MX_RNG_Init();
   //MX_IWDG_Init();
   //MX_CRC_Init();
@@ -149,9 +153,6 @@ int main(void)
   //MX_RTC_Init();
 
 
-  handleUART1 = &huart1;
-  handleLPUART1 = &hlpuart1;
-  handleI2C2 = &hi2c2;
 
   /* USER CODE BEGIN 2 */
   initComms();
@@ -224,8 +225,8 @@ void SystemClock_Config(void)
     /**Initializes the CPU, AHB and APB busses clocks 
     */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSI
-                              |RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_LSE;
-  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+                              |RCC_OSCILLATORTYPE_LSI;//|RCC_OSCILLATORTYPE_LSE;
+//  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.HSICalibrationValue = 16;
@@ -254,7 +255,7 @@ void SystemClock_Config(void)
                               |RCC_PERIPHCLK_I2C2|RCC_PERIPHCLK_RNG
                               |RCC_PERIPHCLK_ADC;
   PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_HSI;
-  PeriphClkInit.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_LSE;
+  PeriphClkInit.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_HSI;
   PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
   PeriphClkInit.I2c2ClockSelection = RCC_I2C2CLKSOURCE_HSI;
   PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
@@ -455,6 +456,10 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
+
     /* DMA2_Stream0_IRQn interrupt configuration */
     HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);

@@ -36,6 +36,7 @@
 #include "stm32l4xx_it.h"
 #include "cmsis_os.h"
 #include "comms.h"
+#include "main.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -44,6 +45,7 @@
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
 extern DMA_HandleTypeDef hdma_lpuart_rx;
+//extern DMA_HandleTypeDef hdma_tx;
 extern DMA_Event_t dma_uart_rx;
 
 extern UART_HandleTypeDef hlpuart1;
@@ -252,12 +254,27 @@ void USART1_IRQHandler(void)
 /**
 * @brief This function handles DMA2 channel7 global interrupt.
 */
-void DMA2_Channel7_IRQHandler(void)
+void USARTx_DMA_TX_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Channel6_IRQn 0 */
+
+  /* USER CODE END DMA2_Channel6_IRQn 0 */
+  HAL_DMA_IRQHandler(handleLPUART1->hdmatx);
+  /* USER CODE BEGIN DMA2_Channel6_IRQn 1 */
+  flagByteTransmitted = 1;
+
+  /* USER CODE END DMA2_Channel6_IRQn 1 */
+}
+
+/**
+* @brief This function handles DMA2 channel7 global interrupt.
+*/
+void USARTx_DMA_RX_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Channel7_IRQn 0 */
 
   /* USER CODE END DMA2_Channel7_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_lpuart_rx);
+  HAL_DMA_IRQHandler(handleLPUART1->hdmarx);
   /* USER CODE BEGIN DMA2_Channel7_IRQn 1 */
 
   /* USER CODE END DMA2_Channel7_IRQn 1 */

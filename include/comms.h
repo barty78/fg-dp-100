@@ -12,6 +12,16 @@
 
 #define DMA_TIMEOUT_MS  10
 
+/* Definition for USARTx's DMA */
+#define USARTx_TX_DMA_CHANNEL             DMA2_Channel6
+#define USARTx_RX_DMA_CHANNEL             DMA2_Channel7
+
+/* Definition for USARTx's NVIC */
+#define USARTx_DMA_TX_IRQn                DMA2_Channel6_IRQn
+#define USARTx_DMA_RX_IRQn                DMA2_Channel7_IRQn
+#define USARTx_DMA_TX_IRQHandler          DMA2_Channel6_IRQHandler
+#define USARTx_DMA_RX_IRQHandler          DMA2_Channel7_IRQHandler
+
 typedef struct
 {
     volatile uint8_t  flag;     /* Timeout event flag */

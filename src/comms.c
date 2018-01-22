@@ -114,7 +114,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 
  uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
 #ifdef RS485
-  if (UartHandle == &handleLPUART1)
+  if (UartHandle == handleLPUART1)
 #else
   if (UartHandle == handleUART1)
 #endif
@@ -196,7 +196,7 @@ uint8_t initComms()
   for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++) packetBuffer[i] = malloc(RX_BUFFER_LENGTH * sizeof(char));
 
  taskEXIT_CRITICAL();
-//HAL_UART_Receive_DMA(&handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
+HAL_UART_Receive_DMA(&handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
 
 /* Disable Half Transfer Interrupt */
 __HAL_DMA_DISABLE_IT(handleLPUART1->hdmarx, DMA_IT_HT);
