@@ -261,7 +261,7 @@ void USARTx_DMA_TX_IRQHandler(void)
   /* USER CODE END DMA2_Channel6_IRQn 0 */
   HAL_DMA_IRQHandler(handleLPUART1->hdmatx);
   /* USER CODE BEGIN DMA2_Channel6_IRQn 1 */
-  flagByteTransmitted = 1;
+//  flagByteTransmitted = 1;
 
   /* USER CODE END DMA2_Channel6_IRQn 1 */
 }
@@ -288,9 +288,9 @@ void LPUART1_IRQHandler(void)
 {
   /* USER CODE BEGIN LPUART1_IRQn 0 */
   /* UART IDLE Interrupt */
-      if((USART2->ISR & USART_ISR_IDLE) != RESET)
+      if((LPUART1->ISR & USART_ISR_IDLE) != RESET)
       {
-          USART2->ICR = UART_CLEAR_IDLEF;
+          LPUART1->ICR = UART_CLEAR_IDLEF;
           /* Start DMA timer */
           dma_uart_rx.timer = DMA_TIMEOUT_MS;
       }

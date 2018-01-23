@@ -36,6 +36,9 @@ char lastMsg[RESPONSE_BUFFER_LENGTH];
 char dma_rx_buf[DMA_BUFFER_LENGTH];
 char rxBuffer[RX_BUFFER_LENGTH], txBuffer[TX_BUFFER_LENGTH];
 char* packetBuffer[PACKET_BUFFER_LENGTH];
+char data[DMA_BUFFER_LENGTH];
+//uint8_t data[DMA_BUFFER_LENGTH] = {'\0'};    /* Data buffer that contains newly received data */
+
 
 unsigned int rxMessageTail, rxMessageHead, txMessageTail, txMessageHead;
 unsigned int packetTail, packetHead, packetPointer, flagPacketReceived;

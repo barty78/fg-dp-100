@@ -20,7 +20,6 @@
 */
 DMA_Event_t dma_uart_rx = {0, 0, DMA_BUFFER_LENGTH};
 
-uint8_t data[DMA_BUFFER_LENGTH] = {'\0'};    /* Data buffer that contains newly received data */
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -75,6 +74,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
     {
         data[i] = dma_rx_buf[pos];
     }
+    flagPacketReceived = 1;
 
 
 //
@@ -120,9 +120,11 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 #endif
   {
 //   if (++txMessageTail >= TX_BUFFER_LENGTH) txMessageTail = 0;
-      txMessageTail = txMessageHead;
+//      txMessageTail = txMessageHead;
    flagByteTransmitted = 1;  // Set transmission flag: transfer complete
    HAL_GPIO_TogglePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin);
+   SET_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
+   HAL_UART_Receive_DMA(handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
 
   }
  taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
@@ -196,10 +198,12 @@ uint8_t initComms()
   for (uint32_t i=0; i<PACKET_BUFFER_LENGTH; i++) packetBuffer[i] = malloc(RX_BUFFER_LENGTH * sizeof(char));
 
  taskEXIT_CRITICAL();
-HAL_UART_Receive_DMA(&handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
+ SET_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
+
+HAL_UART_Receive_DMA(handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
 
 /* Disable Half Transfer Interrupt */
-__HAL_DMA_DISABLE_IT(handleLPUART1->hdmarx, DMA_IT_HT);
+//__HAL_DMA_DISABLE_IT(handleLPUART1->hdmarx, DMA_IT_HT);
 
 #ifdef RS485
 // HAL_UART_Receive_IT(handleLPUART1, (uint8_t*)(&(rxBuffer[rxMessageHead])), 1);
@@ -270,4 +274,8 @@ void sendResponse(char* response)
  sprintf(msg, "%s%02X\n", response, crc);  // Append CRC to message before writing out to Tx
  strcpy(lastMsg, msg);
  writeMessage(msg);
+
+ CLEAR_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
+ HAL_GPIO_TogglePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin);
+ HAL_UART_Transmit_DMA(handleLPUART1, (uint8_t*)msg, strlen(msg));  // Send Message
 }

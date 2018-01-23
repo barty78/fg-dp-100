@@ -57,6 +57,7 @@ void TIM1_UP_TIM16_IRQHandler(void);
 void USART1_IRQHandler(void);
 void LPUART1_IRQHandler(void);
 void I2C2_IRQHandler(void);
+void DMA2_Channel6_IRQHandler(void);
 void DMA2_Channel7_IRQHandler(void);
 
 #ifdef __cplusplus

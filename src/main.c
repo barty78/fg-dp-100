@@ -391,15 +391,13 @@ static void MX_IWDG_Init(void)
   {
 	  Error_Handler();
   }
-
 }
 
 /* LPUART1 init function */
 static void MX_LPUART1_UART_Init(void)
 {
-
   hlpuart1.Instance = LPUART1;
-  hlpuart1.Init.BaudRate = 9600;
+  hlpuart1.Init.BaudRate = 115200;//9600;
   hlpuart1.Init.WordLength = UART_WORDLENGTH_8B;
   hlpuart1.Init.StopBits = UART_STOPBITS_1;
   hlpuart1.Init.Parity = UART_PARITY_NONE;
@@ -414,13 +412,13 @@ static void MX_LPUART1_UART_Init(void)
 
   /* UART2 IDLE Interrupt Configuration */
 //  SET_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
-
+  HAL_NVIC_SetPriority(LPUART1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(LPUART1_IRQn);
 }
 
 /* USART1 init function */
 static void MX_USART1_UART_Init(void)
 {
-
   huart1.Instance = USART1;
   huart1.Init.BaudRate = 9600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
@@ -441,7 +439,6 @@ static void MX_USART1_UART_Init(void)
 /* RNG init function */
 static void MX_RNG_Init(void)
 {
-
   hrng.Instance = RNG;
   if (HAL_RNG_Init(&hrng) != HAL_OK)
   {
@@ -457,13 +454,12 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA2_Stream0_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 0, 1);
     HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
 
     /* DMA2_Stream0_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
-
 
 }
 
@@ -471,9 +467,7 @@ static void MX_DMA_Init(void)
 /* RTC init function */
 static void MX_RTC_Init(void)
 {
-
-    /**Initialize RTC Only
-    */
+    /**Initialize RTC Only */
 
   hrtc.Instance = RTC;
   hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
