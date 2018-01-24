@@ -65,16 +65,30 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
     }
     else                /* DMA Rx Complete event */
     {
-        length = DMA_BUFFER_LENGTH - start;
-        dma_uart_rx.prevCNDTR = DMA_BUFFER_LENGTH;
+        if (currCNDTR + dma_uart_rx.prevCNDTR > DMA_BUFFER_LENGTH)
+          {
+            length = (DMA_BUFFER_LENGTH - start) + (DMA_BUFFER_LENGTH - currCNDTR); // Calculate length when circular buffer wraps
+          } else {
+              length = DMA_BUFFER_LENGTH - start;
+          }
+//        dma_uart_rx.prevCNDTR = DMA_BUFFER_LENGTH;
+        dma_uart_rx.prevCNDTR = currCNDTR;
     }
 
+//    tmp1 = pos;
+//    tmp2 = length;
     /* Copy and Process new data */
     for(i=0,pos=start; i<length; ++i,++pos)
     {
-        data[i] = dma_rx_buf[pos];
+        if (pos >= DMA_BUFFER_LENGTH) {
+            dataBuf[i] = dma_rx_buf[pos - DMA_BUFFER_LENGTH];    // Went past end of circular buffer
+        } else {
+            dataBuf[i] = dma_rx_buf[pos];
+        }
     }
-    flagPacketReceived = 1;
+    flagPacketReceived = 0;
+    if (length != 0) flagPacketReceived = 1;
+
 
 
 //
@@ -122,7 +136,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 //   if (++txMessageTail >= TX_BUFFER_LENGTH) txMessageTail = 0;
 //      txMessageTail = txMessageHead;
    flagByteTransmitted = 1;  // Set transmission flag: transfer complete
-   HAL_GPIO_TogglePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin);
+   HAL_GPIO_WritePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin, GPIO_PIN_RESET);
    SET_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
    HAL_UART_Receive_DMA(handleLPUART1, (uint8_t*)dma_rx_buf, DMA_BUFFER_LENGTH);
 
@@ -272,10 +286,10 @@ void sendResponse(char* response)
  char msg[RESPONSE_BUFFER_LENGTH];
 
  sprintf(msg, "%s%02X\n", response, crc);  // Append CRC to message before writing out to Tx
- strcpy(lastMsg, msg);
- writeMessage(msg);
+// strcpy(lastMsg, msg);
+// writeMessage(msg);
 
  CLEAR_BIT(LPUART1->CR1, USART_CR1_IDLEIE);
- HAL_GPIO_TogglePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin);
+ HAL_GPIO_WritePin(RS485_RXE_GPIO_Port, RS485_RXE_Pin, GPIO_PIN_SET);
  HAL_UART_Transmit_DMA(handleLPUART1, (uint8_t*)msg, strlen(msg));  // Send Message
 }
